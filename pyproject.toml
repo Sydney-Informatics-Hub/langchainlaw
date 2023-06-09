@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "langchainlaw"
+version = "0.1.0"
+description = ""
+authors = ["Mike Lynch <m.lynch@sydney.edu.au>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+langchain = "^0.0.194"
+openai = "^0.27.8"
+
+[tool.poetry.scripts]
+classify = "langchainlaw.langchainlaw:classify"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
