@@ -1,0 +1,7 @@
+{
+    "OPENAI_API_KEY": "SECRET_GOES_HERE",
+    "OPENAI_ORGANIZATION": "org-ORG_KEY_GOES_HERE",
+    "TEMPERATURE": 0.1,
+    "JUDGMENTS": "./json",
+    "PROMPTS": "./data/prompts.yaml"
+}
