@@ -1,0 +1,22 @@
+## Prompts file for langchainlaw 
+--
+preamble: |
+  You are a legal research assistant helping an academic to classify cases in
+  inheritance law based on the text of a judgement.
+  From the following JSON metadata: {metadata}, and the judgment text:
+  {judgment},
+
+prompts:
+  claimants: |
+    1. Identify who is the claimant(s) and defendant(s). Also make a note 
+    if they are a natural person.
+    Then, for each natural person indentified from above,
+    2. State their relationship with the deceased.
+    3. Explain whether they were dependant on deceased.
+    4. State the relevant paragraph number.
+
+  filing_date: Identify the filing date of the claim
+
+  interlocutory: |
+    Does this judgment concern an interlocutory application? If so, what's its
+    filing date?
