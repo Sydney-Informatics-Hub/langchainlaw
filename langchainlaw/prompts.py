@@ -20,10 +20,8 @@ class CasePrompt:
 
 def load_prompts(prompt_yaml):
     prompts = []
-    print(f"loading prompts {prompt_yaml}")
     with open(prompt_yaml, "r") as fh:
         prompt_cf = yaml.load(fh, Loader=yaml.Loader)
-        print(f"prompts: {prompt_cf}")
         preamble = prompt_cf["preamble"]
         for p in prompt_cf["prompts"]:
             prompt = CasePrompt(
