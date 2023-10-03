@@ -1,23 +1,59 @@
-preamble: |
-  You are a legal research assistant helping an academic to classify cases in
-  inheritance law based on the text of a judgement.
-  From the following JSON metadata: {metadata}, and the judgment text:
-  {judgment},
+system: |
+  You are a legal research assistant helping an academic researcher to answer
+  questions about a public judgment of a decision in inheritance law.
+  You will be provided with the judgment and metadata as a JSON document. Please
+  answer the questions about the judgment based only on information contained
+  in the judgement. Where your answer comes from a specific paragraph in the
+  judgement, provide the paragraph number as part of your answer. If you cannot
+  answer any of the questions based on the judgment or metadata, do not make up
+  information, but instead write "answer not found".
+
+judgment: fixme
 
 prompts:
-  - name: claimants
+  - name: parties
     prompt: |
-      1. Identify who is the claimant(s) and defendant(s). Also make a note 
-      if they are a natural person.
-      Then, for each natural person indentified from above,
-      2. State their relationship with the deceased.
-      3. Explain whether they were dependant on deceased.
-      4. State the relevant paragraph number.
+      Based on the metadata and judgment in the following JSON {judgment}, identify
+      each of the parties in the case and answer each of the following questions
+      about each party:
 
-  - name: filing_date
-    prompt: Identify the filing date of the claim
+      Q1. What is the party's full name?
+      Q2. What is the party's role in the trial - plaintiff, defendant,
+          respondent, executor, etc.
+      Q3. Is the party a natural person?
+      Q4. What was the party's relationship to the deceased?
+      Q5. Was the party dependant on the deceased?
+      Q6. Had the party committed misconduct against the deceased, and if so, what?
+      Q7. Was the party estranged from the deceased?
+      Q8. What are the party's financial circumstances?
+      Q9. What are the party's family and personal circumstances?
+      Q10. Has the party engaged in any illegal behaviour, and, if so, what?
+      
+      Return your answer as a list of JSON objects, one for each party, with
+      the following structure for each party, following this example:
 
-  - name: interlocutory
-    prompt: |
-      Does this judgment concern an interlocutory application? If so, what's its
-      filing date?
+        {{
+          "name": "John Smith",
+          "role": "Plaintiff"
+          "natural_person": true,
+          "relationship": "son",
+          "dependant": true,
+          "misconduct": false,
+          "estranged": false,
+          "financial": "the party has good financial circumstances (p9)",
+          "family": "The party is married with three children and lives in Sydney (p10)",
+          "illegal": "the party threatened the plaintiff (p32)"
+        }}
+
+      Where the answer comes from a specific numbered paragraph in the judgment,
+      provide the answer as a brief precis of the details, followed by the
+      number of the paragraph, as in "a precis of the answer (p5)"
+      
+
+  # - name: filing_date
+  #   prompt: Based on the metadata and judgment in the following JSON {judgment}, identify the filing date of the claim.
+
+  # - name: interlocutory
+  #   prompt: |
+  #     Based on the metadata and judgment in the following JSON {judgment}, does this judgment concern an interlocutory application? If so, what's its
+  #     filing date?
