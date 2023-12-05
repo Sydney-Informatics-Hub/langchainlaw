@@ -34,10 +34,10 @@ prompts:
 
         {{
           "name": "John Smith",
-          "role": "Plaintiff"
+          "role_in_trial": "Plaintiff"
           "natural_person": true,
-          "relationship": "son",
-          "dependant": true,
+          "relationship_to_party": "son",
+          "is_dependant": true,
           "misconduct": false,
           "estranged": false,
           "financial": "the party has good financial circumstances (p9)",
