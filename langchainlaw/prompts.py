@@ -9,7 +9,8 @@ from langchain.schema import HumanMessage, SystemMessage
 class CasePrompt:
     name: str
     prompt: str
-    multiple: str
+    return_type: str
+    fields: list[str]
 
     def message(self, judgment):
         content = self.prompt.format(judgment=json.dumps(judgment))
@@ -30,36 +31,42 @@ class CaseChat:
         return self._system
 
     @property
-    def judgment(self):
-        return self._judgment
-
-    @property
     def prompt_names(self):
         return self._prompt_names
 
     def prompt(self, name):
         return self._prompts.get(name, None)
 
-    def add_prompt(self, name, prompt, multiple):
+    def debug(self):
+        print("Debugging prompts")
+        for name in self.prompt_names:
+            prompt = self.prompt(name)
+            print(f"\nprompt {name}")
+            print(prompt.prompt)
+            print(prompt.return_type)
+            print(prompt.fields)
+
+    def add_prompt(self, name, prompt, return_type, fields):
         if name in self._prompts:
             raise ValueError(f"Prompt with name {name} already defined")
         self._prompt_names.append(name)
         self._prompts[name] = CasePrompt(
             name=name,
             prompt=prompt,
-            multiple=multiple,
+            return_type=return_type,
+            fields=fields,
         )
 
     def load_yaml(self, yaml_file):
         with open(yaml_file, "r") as fh:
             prompt_cf = yaml.load(fh, Loader=yaml.Loader)
             self._system = prompt_cf["system"]
-            self._judgment = prompt_cf["judgment"]
             for p in prompt_cf["prompts"]:
                 self.add_prompt(
                     p["name"],
                     p["prompt"],
-                    p.get("multiple", None),
+                    p.get("return_type", "text"),
+                    p.get("fields", None),
                 )
 
     def start_chat(self):
@@ -70,7 +77,7 @@ class CaseChat:
 
     def next_prompt(self, judgment):
         for prompt_name in self._prompt_names:
-            yield self._prompts[prompt_name].message(judgment)
+            yield self._prompts[prompt_name]
 
     def multiple_prompt(self, response):
         try:

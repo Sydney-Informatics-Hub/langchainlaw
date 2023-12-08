@@ -8,10 +8,20 @@ system: |
   answer any of the questions based on the judgment or metadata, do not make up
   information, but instead write "answer not found".
 
-judgment: fixme
-
 prompts:
   - name: parties
+    return_type: json_multiple
+    fields:
+      - name
+      - role_in_trial
+      - natural_person
+      - relationship_to_party
+      - is_dependant
+      - misconduct
+      - estranged
+      - financial
+      - family
+      - illegal
     prompt: |
       Based on the metadata and judgment in the following JSON {judgment}, identify
       each of the parties in the case and answer each of the following questions
@@ -50,10 +60,12 @@ prompts:
       number of the paragraph, as in "a precis of the answer (p5)"
       
 
-  # - name: filing_date
-  #   prompt: Based on the metadata and judgment in the following JSON {judgment}, identify the filing date of the claim.
+  - name: filing_date
+    return_type: text
+    prompt: Based on the metadata and judgment in the following JSON {judgment}, identify the filing date of the claim.
 
-  # - name: interlocutory
-  #   prompt: |
-  #     Based on the metadata and judgment in the following JSON {judgment}, does this judgment concern an interlocutory application? If so, what's its
-  #     filing date?
+  - name: interlocutory
+    return_type: text
+    prompt: |
+      Based on the metadata and judgment in the following JSON {judgment}, does this judgment concern an interlocutory application? If so, what's its
+      filing date?
