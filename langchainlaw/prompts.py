@@ -19,20 +19,16 @@ class CasePrompt:
         return HumanMessage(content=content)
 
     def parse_response(self, response):
-        print(f"{self.name}: response = {response}")
         if self.return_type == "text":
             return [response]
         try:
             decoded = json.loads(response)
-            print("Decoded JSON:")
-            print(decoded)
             if self.return_type == "json_multiple":
                 # unpack and flatten
                 unpacked = [self.unpack_object(o) for o in decoded]
                 columns = [column for item in unpacked for column in item]
             else:
                 columns = self.unpack_object(decoded)
-            print(f"columns = {columns}")
             return columns
         except Exception as e:
             traceback.print_exc(file=sys.stderr)

@@ -94,20 +94,17 @@ def classify():
             message = prompt.message(judgment)
             try:
                 if args.test:
-                    # gets back a JSON string
                     response = prompt.mock_response()
                 else:
                     response = chat([message])
-                results = prompt.parse_response(response)
+                results = prompt.parse_response(response.content)
             except Exception as e:
                 results = prompt.wrap_error(str(e))
-            print(results)
             if args.prompt:
                 print(results)
             else:
                 row += results
         if not args.prompt:
-            print(row)
             worksheet.append(row)
 
     if not args.prompt:
