@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 import yaml
 import json
+import sys
+import traceback
 
 from langchain.schema import HumanMessage, SystemMessage
 
@@ -15,6 +17,46 @@ class CasePrompt:
     def message(self, judgment):
         content = self.prompt.format(judgment=json.dumps(judgment))
         return HumanMessage(content=content)
+
+    def parse_response(self, response):
+        print(f"{self.name}: response = {response}")
+        if self.return_type == "text":
+            return [response]
+        try:
+            decoded = json.loads(response)
+            print("Decoded JSON:")
+            print(decoded)
+            if self.return_type == "json_multiple":
+                # unpack and flatten
+                unpacked = [self.unpack_object(o) for o in decoded]
+                columns = [column for item in unpacked for column in item]
+            else:
+                columns = self.unpack_object(decoded)
+            print(f"columns = {columns}")
+            return columns
+        except Exception as e:
+            traceback.print_exc(file=sys.stderr)
+            return self.wrap_error(str(e))
+
+    def unpack_object(self, o):
+        return [o.get(f, "") for f in self.fields]
+
+    def wrap_error(self, msg):
+        if self.return_type == "text":
+            return [msg]
+        else:
+            cols = ["" for f in self.fields]
+            cols[0] = msg
+            return cols
+
+    def mock_response(self):
+        # Note: a future version could merge this with the JSON for the prompt
+        if self.return_type == "text":
+            return "Response"
+        o = {f: "value" for f in self.fields}
+        if self.return_type == "json_multiple":
+            return json.dumps([o])
+        return json.dumps(o)
 
 
 class CaseChat:

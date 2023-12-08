@@ -9,6 +9,16 @@ system: |
   information, but instead write "answer not found".
 
 prompts:
+  - name: filing_date
+    return_type: text
+    prompt: Based on the metadata and judgment in the following JSON {judgment}, identify the filing date of the claim.
+
+  - name: interlocutory
+    return_type: text
+    prompt: |
+      Based on the metadata and judgment in the following JSON {judgment}, does this judgment concern an interlocutory application? If so, what's its
+      filing date?
+      
   - name: parties
     return_type: json_multiple
     fields:
@@ -60,12 +70,3 @@ prompts:
       number of the paragraph, as in "a precis of the answer (p5)"
       
 
-  - name: filing_date
-    return_type: text
-    prompt: Based on the metadata and judgment in the following JSON {judgment}, identify the filing date of the claim.
-
-  - name: interlocutory
-    return_type: text
-    prompt: |
-      Based on the metadata and judgment in the following JSON {judgment}, does this judgment concern an interlocutory application? If so, what's its
-      filing date?

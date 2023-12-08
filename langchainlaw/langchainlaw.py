@@ -18,8 +18,6 @@ def load_config(cf_file):
 def load_case(casefile):
     with open(casefile, "r") as file:
         return json.load(file)
-    # judgment = data.pop("judgment")
-    # return judgment
 
 
 def classify():
@@ -48,12 +46,6 @@ def classify():
         type=str,
         help="Generate results from only one prompt",
     )
-    ap.add_argument(
-        "--output",
-        default="./results.xlsx",
-        type=Path,
-        help="Output spreadsheet",
-    )
     args = ap.parse_args()
     cf = load_config(args.config)
     prompts = CaseChat(cf["PROMPTS"])
@@ -69,6 +61,8 @@ def classify():
             openai_organization=cf["OPENAI_ORGANIZATION"],
             temperature=cf["TEMPERATURE"],
         )
+
+    spreadsheet = cf["OUTPUT"]
 
     workbook = Workbook()
     worksheet = workbook.active
@@ -96,22 +90,28 @@ def classify():
             response = chat([system_prompt])
 
         for prompt in prompts.next_prompt(judgment):
+            print(f"Prompt {prompt.name}")
             message = prompt.message(judgment)
-            if not args.test:
-                try:
+            try:
+                if args.test:
+                    # gets back a JSON string
+                    response = prompt.mock_response()
+                else:
                     response = chat([message])
-                    results = prompt.parse_response(response)
-                except Exception as e:
-                    results = prompt.wrap_error(e)
+                results = prompt.parse_response(response)
+            except Exception as e:
+                results = prompt.wrap_error(str(e))
+            print(results)
             if args.prompt:
                 print(results)
             else:
                 row += results
         if not args.prompt:
-            worksheet.append(results)
+            print(row)
+            worksheet.append(row)
 
     if not args.prompt:
-        workbook.save(args.output)
+        workbook.save(spreadsheet)
 
 
 if __name__ == "__main__":
