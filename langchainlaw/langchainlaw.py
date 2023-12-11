@@ -1,6 +1,7 @@
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 from langchain.chat_models import ChatOpenAI
 from openpyxl import Workbook
@@ -62,6 +63,7 @@ def classify():
             temperature=cf["TEMPERATURE"],
         )
 
+    rate_limit = cf.get(cf["RATE_LIMIT"], 5)
     spreadsheet = cf["OUTPUT"]
 
     workbook = Workbook()
@@ -104,6 +106,8 @@ def classify():
                 print(results)
             else:
                 row += results
+            print(f"Sleeping {rate_limit}")
+            time.sleep(rate_limit)
         if not args.prompt:
             worksheet.append(row)
 
