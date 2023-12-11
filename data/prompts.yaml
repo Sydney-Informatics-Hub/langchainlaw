@@ -8,12 +8,12 @@ system: |
   answer any of the questions based on the judgment or metadata, do not make up
   information, but instead write "answer not found".
 
+prefix: Based on the metadata and judgment in the following JSON {judgment}, 
+
 prompts:
   - name: filing_date
     return_type: text
-    prompt: |
-      Based on the metadata and judgment in the following JSON {judgment},
-      identify the filing date of the claim.
+    prompt: identify the filing date of the claim.
 
   - name: interlocutory
     return_type: text
@@ -21,10 +21,9 @@ prompts:
       - interlocutory
       - interlocutory_date
     prompt: |
-      Based on the metadata and judgment in the following JSON {judgment}, does
-      this judgment concern an interlocutory application? If so, what is the
-      filing date of the application? 
-      filing date? Return your answer as a JSON object following this example:
+      does this judgment concern an interlocutory application? If so, what is the
+      filing date of the application? Return your answer as a JSON object
+      following this example:
 
         {{
           "interlocutory": true
@@ -33,12 +32,11 @@ prompts:
 
   - name: executor
     return_type: text
-    prompt: Who is the executor or administrator of the deceased's estate?
-
+    prompt: who is the executor or administrator of the deceased's estate?
 
   - name: executor_legal
     return_type: text
-    prompt: Who is are the legal representatives, if any, of the executor or adminstrator?
+    prompt: who is are the legal representatives, if any, of the executor or adminstrator?
 
 
   - name: mediation
@@ -47,7 +45,7 @@ prompts:
       - mediation
       - mediation_date
     prompt: |
-      Did the parties participate in mediation or any other alternative dispute
+      did the parties participate in mediation or any other alternative dispute
       resolution? If they did, on what date did this take place? Return your
       answer as a JSON object following this example:
 
@@ -56,12 +54,91 @@ prompts:
           "mediation_date": 31/12/2010
         }}
       
+  - name: legislation
+    return_type: text
+    prompt: what sections of the Succession Act or Family Provision Act are mentioned?
+
+  - name: other_claims
+    return_type: text
+    prompt: |
+      what other claims did the plaintiff argue, aside from the Succession
+      Act? For example, presumed undue influence, actual undue influence,
+      incapacity
+
+  - name: outcome
+    return_type: text
+    prompt: were the plaintiff's claims successful?
+
+  - name: provision_awarded
+    return_type: text
+    prompt: what provision did the court award? 
+
+  - name: costs_disputed
+    return_type: text
+    prompt: |
+      did the parties have a dispute about their costs? Answer "yes",
+      "no" or "unclear"
+
+  - name: costs_disputed_amount
+    return_type: text
+    prompt: what was the amount of costs in the dispute, if any?
+
+  - name: costs_liable
+    return_type: text
+    prompt: which party or parties were liable for costs?
+
+  - name: death_date
+    return_type: text
+    prompt: when did the deceased die?
+
+  - name: will_date
+    return_type: json_multiple
+    prompt: |
+      identify every will, codicil and revocation mentioned in the case and
+      the dates when these were made. Return your answer as a list of JSON
+      objects, one for each item, following this example:
+      {{
+        "document": "codicil"
+        "paragraph": "p2"
+        "date": "31/12/2020"
+      }}
+
+  - name: deceased_misconduct
+    return_type: text
+    prompt: |
+      had the deceased committed misconduct against any of the parties to the
+      case? Reply with "alleged", "found" or "neither", and provide a citation
+      of the paragraph or paragraph where the misconduct is described.
+
+  - name: estate
+    return_type: text
+    prompt: list all of the assets which make up the deceased's estate.
+
+  - name: estate_value
+    return_type: text
+    prompt: what is the monetary value of the estate, if stated?
+
+  - name: family_home
+    return_type: text
+    prompt: is the family or matrimonial home in dispute?
+
+  - name: notional_estate
+    return_type: text
+    prompt: did the court designate any property as notional estate?
+
+  - name: distribution
+    return_type: text
+    prompt: |
+      how is the deceased's estate distributed according to the last will or
+      intestacy rules?
+
   - name: parties
     return_type: json_multiple
     fields:
       - name
       - role_in_trial
       - representatives
+      - costs
       - natural_person
       - relationship_to_party
       - is_dependant
@@ -72,22 +149,22 @@ prompts:
       - illegal
       - contingent
     prompt: |
-      Based on the metadata and judgment in the following JSON {judgment}, identify
-      each of the parties in the case and answer each of the following questions
+      identify each of the parties in the case and answer each of the following questions
       about each party:
 
       Q1. What is the party's full name?
       Q2. What is the party's role in the trial - plaintiff, defendant,
           respondent, executor, etc.
       Q3. Who are the party's legal representatives?
-      Q4. Is the party a natural person?
-      Q5. What was the party's relationship to the deceased?
-      Q6. Was the party dependant on the deceased?
-      Q7. Had the party committed misconduct against the deceased, and if so, what?
-      Q8. Was the party estranged from the deceased?
-      Q9. What are the party's financial circumstances?
-      Q10. What are the party's family and personal circumstances?
-      Q11. Has the party engaged in any illegal behaviour, and, if so, what?
+      Q4. What is the amount of the costs incurred by this party, if any?
+      Q5. Is the party a natural person?
+      Q6. What was the party's relationship to the deceased?
+      Q7. Was the party dependant on the deceased?
+      Q8. Had the party committed misconduct against the deceased, and if so, what?
+      Q9. Was the party estranged from the deceased?
+      Q10. What are the party's financial circumstances?
+      Q11. What are the party's family and personal circumstances?
+      Q12. Has the party engaged in any illegal behaviour, and, if so, what?
       Q12. Does the party have a conditional or contingent fee agreement with their legal representatives?
       
       Return your answer as a list of JSON objects, one for each party, with
