@@ -11,19 +11,57 @@ system: |
 prompts:
   - name: filing_date
     return_type: text
-    prompt: Based on the metadata and judgment in the following JSON {judgment}, identify the filing date of the claim.
+    prompt: |
+      Based on the metadata and judgment in the following JSON {judgment},
+      identify the filing date of the claim.
 
   - name: interlocutory
     return_type: text
+    fields:
+      - interlocutory
+      - interlocutory_date
     prompt: |
-      Based on the metadata and judgment in the following JSON {judgment}, does this judgment concern an interlocutory application? If so, what's its
-      filing date?
+      Based on the metadata and judgment in the following JSON {judgment}, does
+      this judgment concern an interlocutory application? If so, what is the
+      filing date of the application? 
+      filing date? Return your answer as a JSON object following this example:
+
+        {{
+          "interlocutory": true
+          "interlocutory_date": 31/12/2010
+        }}
+
+  - name: executor
+    return_type: text
+    prompt: Who is the executor or administrator of the deceased's estate?
+
+
+  - name: executor_legal
+    return_type: text
+    prompt: Who is are the legal representatives, if any, of the executor or adminstrator?
+
+
+  - name: mediation
+    return_type: json
+    fields:
+      - mediation
+      - mediation_date
+    prompt: |
+      Did the parties participate in mediation or any other alternative dispute
+      resolution? If they did, on what date did this take place? Return your
+      answer as a JSON object following this example:
+
+        {{
+          "mediation": true
+          "mediation_date": 31/12/2010
+        }}
       
   - name: parties
     return_type: json_multiple
     fields:
       - name
       - role_in_trial
+      - representatives
       - natural_person
       - relationship_to_party
       - is_dependant
@@ -32,6 +70,7 @@ prompts:
       - financial
       - family
       - illegal
+      - contingent
     prompt: |
       Based on the metadata and judgment in the following JSON {judgment}, identify
       each of the parties in the case and answer each of the following questions
@@ -40,14 +79,16 @@ prompts:
       Q1. What is the party's full name?
       Q2. What is the party's role in the trial - plaintiff, defendant,
           respondent, executor, etc.
-      Q3. Is the party a natural person?
-      Q4. What was the party's relationship to the deceased?
-      Q5. Was the party dependant on the deceased?
-      Q6. Had the party committed misconduct against the deceased, and if so, what?
-      Q7. Was the party estranged from the deceased?
-      Q8. What are the party's financial circumstances?
-      Q9. What are the party's family and personal circumstances?
-      Q10. Has the party engaged in any illegal behaviour, and, if so, what?
+      Q3. Who are the party's legal representatives?
+      Q4. Is the party a natural person?
+      Q5. What was the party's relationship to the deceased?
+      Q6. Was the party dependant on the deceased?
+      Q7. Had the party committed misconduct against the deceased, and if so, what?
+      Q8. Was the party estranged from the deceased?
+      Q9. What are the party's financial circumstances?
+      Q10. What are the party's family and personal circumstances?
+      Q11. Has the party engaged in any illegal behaviour, and, if so, what?
+      Q12. Does the party have a conditional or contingent fee agreement with their legal representatives?
       
       Return your answer as a list of JSON objects, one for each party, with
       the following structure for each party, following this example:
@@ -55,14 +96,16 @@ prompts:
         {{
           "name": "John Smith",
           "role_in_trial": "Plaintiff"
-          "natural_person": true,
+          "legal_representatives": "Alan Smithee, QC"
+          "natural_person": "true",
           "relationship_to_party": "son",
-          "is_dependant": true,
-          "misconduct": false,
-          "estranged": false,
+          "is_dependant": "true (p9)",
+          "misconduct": "false",
+          "estranged": "false",
           "financial": "the party has good financial circumstances (p9)",
           "family": "The party is married with three children and lives in Sydney (p10)",
-          "illegal": "the party threatened the plaintiff (p32)"
+          "illegal": "the party threatened the plaintiff (p32)",
+          "contingent": "true (p10)""
         }}
 
       Where the answer comes from a specific numbered paragraph in the judgment,
