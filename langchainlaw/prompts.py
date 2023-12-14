@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import yaml
 import json
 import sys
@@ -7,16 +7,16 @@ import traceback
 from langchain.schema import HumanMessage, SystemMessage
 
 
+class PromptException(Exception):
+    pass
+
+
 @dataclass
 class CasePrompt:
     name: str
     prompt: str
     return_type: str
-    fields: list[str]
-
-    def message(self, judgment):
-        content = self.prompt.format(judgment=json.dumps(judgment))
-        return HumanMessage(content=content)
+    fields: list[str] = field(default_factory=list)
 
     def parse_response(self, response):
         if self.return_type == "text":
@@ -54,15 +54,20 @@ class CasePrompt:
             return json.dumps([o])
         return json.dumps(o)
 
+    def validate(self):
+        """Raise a PromptException if the config is invalid"""
+        if self.return_type == "json_multiple" and not self.fields:
+            raise PromptException("json_multiple needs a fields section")
+
 
 class CaseChat:
-    def __init__(self, yaml=None):
+    def __init__(self):
         self._system = None
         self._judgment = None
+        self._intro = None
+        self._intro_template = None
         self._prompts = {}
         self._prompt_names = []
-        if yaml is not None:
-            self.load_yaml(yaml)
 
     @property
     def system(self):
@@ -72,8 +77,43 @@ class CaseChat:
     def prompt_names(self):
         return self._prompt_names
 
+    @property
+    def judgment(self):
+        return self._judgment
+
+    @judgment.setter
+    def judgment(self, v):
+        self._judgment = v
+        print(v)
+        self._intro = self._intro_template.format(judgment=json.dumps(v))
+
+    @property
+    def intro(self):
+        return self._intro
+
     def prompt(self, name):
         return self._prompts.get(name, None)
+
+    def load_yaml(self, yaml_file):
+        with open(yaml_file, "r") as fh:
+            prompt_cf = yaml.load(fh, Loader=yaml.Loader)
+            self._system = prompt_cf["system"]
+            self._intro_template = prompt_cf["intro"]
+            for p in prompt_cf["prompts"]:
+                self.add_prompt(
+                    p["name"],
+                    p["prompt"],
+                    p.get("return_type", "text"),
+                    p.get("fields", None),
+                )
+            valid = True
+            for prompt in self.next_prompt():
+                try:
+                    prompt.validate()
+                except PromptException as e:
+                    print(f"Prompt '{prompt.name}' config error: {e}")
+                    valid = False
+        return valid
 
     def debug(self):
         print("Debugging prompts")
@@ -95,32 +135,13 @@ class CaseChat:
             fields=fields,
         )
 
-    def load_yaml(self, yaml_file):
-        with open(yaml_file, "r") as fh:
-            prompt_cf = yaml.load(fh, Loader=yaml.Loader)
-            self._system = prompt_cf["system"]
-            for p in prompt_cf["prompts"]:
-                self.add_prompt(
-                    p["name"],
-                    p["prompt"],
-                    p.get("return_type", "text"),
-                    p.get("fields", None),
-                )
-
     def start_chat(self):
         return SystemMessage(content=self.system)
 
-    def start_judgment(self, judgment):
-        return HumanMessage(content=self.judgment.format(judgment=judgment))
-
-    def next_prompt(self, judgment):
+    def next_prompt(self):
         for prompt_name in self._prompt_names:
             yield self._prompts[prompt_name]
 
-    def multiple_prompt(self, response):
-        try:
-            responses = json.loads(response)
-        except json.decoder.JSONDecodeError:
-            return ""
-        for x in responses:
-            yield self.multiple.format(x=x)
+    def message(self, prompt):
+        content = self._intro + prompt.prompt
+        return HumanMessage(content=content)

@@ -8,7 +8,7 @@ system: |
   answer any of the questions based on the judgment or metadata, do not make up
   information, but instead write "answer not found".
 
-prefix: Based on the metadata and judgment in the following JSON {judgment}, 
+intro: Based on the metadata and judgment in the following JSON {judgment}, 
 
 prompts:
   - name: filing_date
@@ -37,7 +37,6 @@ prompts:
   - name: executor_legal
     return_type: text
     prompt: who is are the legal representatives, if any, of the executor or adminstrator?
-
 
   - name: mediation
     return_type: json
