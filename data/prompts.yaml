@@ -92,6 +92,10 @@ prompts:
 
   - name: will_date
     return_type: json_multiple
+    fields:
+      - document
+      - paragraph
+      - date
     prompt: |
       identify every will, codicil and revocation mentioned in the case and
       the dates when these were made. Return your answer as a list of JSON

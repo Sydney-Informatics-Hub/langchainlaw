@@ -97,14 +97,13 @@ def classify():
 
         for prompt in prompts.next_prompt():
             if not args.prompt or prompt.name == args.prompt:
-                print(f"Prompt {prompt.name}")
                 message = prompts.message(prompt)
                 try:
                     if args.test:
                         response = prompt.mock_response()
                     else:
-                        response = chat([message])
-                    results = prompt.parse_response(response.content)
+                        response = chat([message]).content
+                    results = prompt.parse_response(response)
                 except Exception as e:
                     results = prompt.wrap_error(str(e))
                 if args.prompt:
@@ -114,11 +113,15 @@ def classify():
                 if not args.test:
                     print(f"Sleeping {rate_limit}")
                     time.sleep(rate_limit)
-            if not args.prompt:
-                worksheet.append(row)
+        if not args.prompt:
+            worksheet.append(row)
 
     # fixme - append to a CSV and then write to spreadsheet?
     if not args.prompt:
+        if args.test:
+            print(f"Writing sample prompts to {spreadsheet}")
+        else:
+            print(f"Writing results to {spreadsheet}")
         workbook.save(spreadsheet)
 
 
