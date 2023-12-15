@@ -21,6 +21,42 @@ def load_case(casefile):
         return json.load(file)
 
 
+def cache_write(cache, case_id, filename, results):
+    cache_dir = cache / case_id
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cache_file = cache_dir / filename
+    with open(cache_file, "w") as fh:
+        fh.write(results)
+
+
+def cache_read(cache, case_id, filename):
+    cache_file = cache / case_id / filename
+    if cache_file.is_file():
+        with open(cache_file, "r") as fh:
+            results = fh.read()
+            return results
+
+
+def run_prompt(chat, prompts, prompt, test=False, cache=None, case_id=None):
+    """Actually send prompt to LLM, unless there's a result in the cache"""
+    if cache:
+        result = cache_read(cache, case_id, prompt.name)
+        if result:
+            return result
+    message = prompts.message(prompt)
+    try:
+        if test:
+            response = prompt.mock_response()
+        else:
+            response = chat([message]).content
+        results = prompt.parse_response(response)
+    except Exception as e:
+        results = prompt.wrap_error(str(e))
+    if cache:
+        cache_write(cache, case_id, prompt.name, results)
+    return results
+
+
 def classify():
     ap = argparse.ArgumentParser("langchain-law")
     ap.add_argument(
@@ -69,6 +105,7 @@ def classify():
 
     rate_limit = cf.get(cf["RATE_LIMIT"], 5)
     spreadsheet = cf["OUTPUT"]
+    cache = cf["CACHE"]
 
     workbook = Workbook()
     worksheet = workbook.active
@@ -86,6 +123,7 @@ def classify():
         cases = Path(cf["INPUT"]).glob("*.json")
 
     for casefile in cases:
+        case_id = casefile.stem
         prompts.judgment = load_case(casefile)
         print("Case: " + prompts.judgment["mnc"])
         row = [str(casefile), prompts.judgment["mnc"]]
@@ -93,19 +131,17 @@ def classify():
         system_prompt = prompts.start_chat()
 
         if not args.test:
-            response = chat([system_prompt])
+            chat([system_prompt])
 
         for prompt in prompts.next_prompt():
             if not args.prompt or prompt.name == args.prompt:
-                message = prompts.message(prompt)
-                try:
-                    if args.test:
-                        response = prompt.mock_response()
-                    else:
-                        response = chat([message]).content
-                    results = prompt.parse_response(response)
-                except Exception as e:
-                    results = prompt.wrap_error(str(e))
+                results = run_prompt(
+                    prompts,
+                    prompt,
+                    test=args.test,
+                    cache=cache,
+                    case_id=case_id,
+                )
                 if args.prompt:
                     print(results)
                 else:
@@ -116,7 +152,6 @@ def classify():
         if not args.prompt:
             worksheet.append(row)
 
-    # fixme - append to a CSV and then write to spreadsheet?
     if not args.prompt:
         if args.test:
             print(f"Writing sample prompts to {spreadsheet}")
