@@ -22,15 +22,16 @@ def load_case(casefile):
 
 
 def cache_write(cache, case_id, filename, results):
-    cache_dir = cache / case_id
+    cache_dir = Path(cache) / Path(case_id)
     cache_dir.mkdir(parents=True, exist_ok=True)
-    cache_file = cache_dir / filename
+    cache_file = cache_dir / Path(filename)
     with open(cache_file, "w") as fh:
-        fh.write(results)
+        for result in results:
+            fh.write(result + "\n")
 
 
 def cache_read(cache, case_id, filename):
-    cache_file = cache / case_id / filename
+    cache_file = Path(cache) / Path(case_id) / Path(filename)
     if cache_file.is_file():
         with open(cache_file, "r") as fh:
             results = fh.read()
@@ -135,7 +136,9 @@ def classify():
 
         for prompt in prompts.next_prompt():
             if not args.prompt or prompt.name == args.prompt:
+                print(f"Prompt: {prompt.name}")
                 results = run_prompt(
+                    chat,
                     prompts,
                     prompt,
                     test=args.test,
@@ -147,7 +150,6 @@ def classify():
                 else:
                     row += results
                 if not args.test:
-                    print(f"Sleeping {rate_limit}")
                     time.sleep(rate_limit)
         if not args.prompt:
             worksheet.append(row)
