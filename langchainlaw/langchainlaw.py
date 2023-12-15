@@ -1,11 +1,13 @@
 import argparse
 import json
+import sys
+import time
 from pathlib import Path
-from langchain.llms import OpenAI
+from langchain.chat_models import ChatOpenAI
 from openpyxl import Workbook
 
 
-from langchainlaw.prompts import load_prompts
+from langchainlaw.prompts import CaseChat
 
 
 def load_config(cf_file):
@@ -14,11 +16,9 @@ def load_config(cf_file):
         return cf
 
 
-def load_case(jsonfile):
-    with open(jsonfile, "r") as file:
-        data = json.load(file)
-    judgment = data.pop("judgment")
-    return data, judgment
+def load_case(casefile):
+    with open(casefile, "r") as file:
+        return json.load(file)
 
 
 def classify():
@@ -36,39 +36,90 @@ def classify():
         help="Run without making calls to OpenAI, for testing prompts",
     )
     ap.add_argument(
-        "--output",
-        default="./results.xlsx",
-        type=Path,
-        help="Output spreadsheet",
+        "--case",
+        default="",
+        type=str,
+        help="Select a single case by its filename",
+    )
+    ap.add_argument(
+        "--prompt",
+        default="",
+        type=str,
+        help="Generate results from only one prompt",
     )
     args = ap.parse_args()
     cf = load_config(args.config)
-    prompts = load_prompts(cf["PROMPTS"])
-    llm = OpenAI(
-        openai_api_key=cf["OPENAI_API_KEY"],
-        openai_organization=cf["OPENAI_ORGANIZATION"],
-        temperature=cf["TEMPERATURE"],
-    )
+    prompts = CaseChat()
+
+    if not prompts.load_yaml(cf["PROMPTS"]):
+        sys.exit()
+
+    if args.prompt:
+        if not prompts.prompt(args.prompt):
+            print(f"No prompt defined with name '{args.prompt}'")
+            sys.exit()
+    chat = None
+    if not args.test:
+        chat = ChatOpenAI(
+            model_name=cf["OPENAI_CHAT_MODEL"],
+            openai_api_key=cf["OPENAI_API_KEY"],
+            openai_organization=cf["OPENAI_ORGANIZATION"],
+            temperature=cf["TEMPERATURE"],
+        )
+
+    rate_limit = cf.get(cf["RATE_LIMIT"], 5)
+    spreadsheet = cf["OUTPUT"]
 
     workbook = Workbook()
     worksheet = workbook.active
 
-    worksheet.append(["file", "mnc"] + [p.name for p in prompts])
+    if not args.prompt:
+        worksheet.append(["file", "mnc"])  # fixme headers
 
-    for jsonfile in Path(cf["JUDGMENTS"]).glob("*.json"):
-        metadata, judgment = load_case(jsonfile)
-        print("Case: " + metadata["mnc"])
-        results = [str(jsonfile), metadata["mnc"]]
-        for prompt in prompts:
-            prompt_str = prompt.make_prompt(metadata, judgment[:10])
-            if args.test:
-                results.append(prompt_str)
-            else:
-                result = llm(prompt_str)
-                results.append(result)
-        worksheet.append(results)
+    if args.case:
+        case = Path(cf["INPUT"]) / Path(args.case)
+        if not case.is_file():
+            print(f"Case file {args.case} not found")
+            sys.exit()
+        cases = [case]
+    else:
+        cases = Path(cf["INPUT"]).glob("*.json")
 
-    workbook.save(args.output)
+    for casefile in cases:
+        prompts.judgment = load_case(casefile)
+        print("Case: " + prompts.judgment["mnc"])
+        row = [str(casefile), prompts.judgment["mnc"]]
+
+        system_prompt = prompts.start_chat()
+
+        if not args.test:
+            response = chat([system_prompt])
+
+        for prompt in prompts.next_prompt():
+            if not args.prompt or prompt.name == args.prompt:
+                print(f"Prompt {prompt.name}")
+                message = prompts.message(prompt)
+                try:
+                    if args.test:
+                        response = prompt.mock_response()
+                    else:
+                        response = chat([message])
+                    results = prompt.parse_response(response.content)
+                except Exception as e:
+                    results = prompt.wrap_error(str(e))
+                if args.prompt:
+                    print(results)
+                else:
+                    row += results
+                if not args.test:
+                    print(f"Sleeping {rate_limit}")
+                    time.sleep(rate_limit)
+            if not args.prompt:
+                worksheet.append(row)
+
+    # fixme - append to a CSV and then write to spreadsheet?
+    if not args.prompt:
+        workbook.save(spreadsheet)
 
 
 if __name__ == "__main__":
