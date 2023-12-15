@@ -27,7 +27,7 @@ def cache_write(cache, case_id, filename, results):
     cache_file = cache_dir / Path(filename)
     with open(cache_file, "w") as fh:
         for result in results:
-            fh.write(result + "\n")
+            fh.write(str(result) + "\n")
 
 
 def cache_read(cache, case_id, filename):
@@ -38,7 +38,9 @@ def cache_read(cache, case_id, filename):
             return results
 
 
-def run_prompt(chat, prompts, prompt, test=False, cache=None, case_id=None):
+def run_prompt(
+    chat, prompts, prompt, test=False, rate_limit=5, cache=None, case_id=None
+):
     """Actually send prompt to LLM, unless there's a result in the cache"""
     if cache:
         result = cache_read(cache, case_id, prompt.name)
@@ -50,6 +52,7 @@ def run_prompt(chat, prompts, prompt, test=False, cache=None, case_id=None):
             response = prompt.mock_response()
         else:
             response = chat([message]).content
+            time.sleep(rate_limit)
         results = prompt.parse_response(response)
     except Exception as e:
         results = prompt.wrap_error(str(e))
@@ -142,6 +145,7 @@ def classify():
                     prompts,
                     prompt,
                     test=args.test,
+                    rate_limit=rate_limit,
                     cache=cache,
                     case_id=case_id,
                 )
@@ -149,8 +153,6 @@ def classify():
                     print(results)
                 else:
                     row += results
-                if not args.test:
-                    time.sleep(rate_limit)
         if not args.prompt:
             worksheet.append(row)
 
