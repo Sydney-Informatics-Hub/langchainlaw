@@ -16,7 +16,7 @@ prompts:
     prompt: identify the filing date of the claim.
 
   - name: interlocutory
-    return_type: text
+    return_type: json
     fields:
       - interlocutory
       - interlocutory_date
