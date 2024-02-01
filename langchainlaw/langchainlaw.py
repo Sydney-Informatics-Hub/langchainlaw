@@ -8,6 +8,7 @@ from openpyxl import Workbook
 
 
 from langchainlaw.prompts import CaseChat
+from langchainlaw.cache import Cache
 
 
 def load_config(cf_file):
@@ -26,8 +27,7 @@ def cache_write(cache, case_id, filename, results):
     cache_dir.mkdir(parents=True, exist_ok=True)
     cache_file = cache_dir / Path(filename)
     with open(cache_file, "w") as fh:
-        for result in results:
-            fh.write(str(result) + "\n")
+        fh.write(results)
 
 
 def cache_read(cache, case_id, filename):
@@ -36,29 +36,48 @@ def cache_read(cache, case_id, filename):
         with open(cache_file, "r") as fh:
             results = fh.read()
             return results
+    else:
+        return None
 
 
 def run_prompt(
     chat, prompts, prompt, test=False, rate_limit=5, cache=None, case_id=None
 ):
-    """Actually send prompt to LLM, unless there's a result in the cache"""
-    if cache:
-        result = cache_read(cache, case_id, prompt.name)
-        if result:
-            return result
+    """Actually send prompt to LLM, unless there's already a response in the
+    cache.
+
+    response == what we get back from the LLM (text or json)
+    results == a list of values to be written into the spreadsheet
+
+    The cache is response, not results - if we read from the cache we re-parse
+    the response if required (for json prompts)
+
+    """
     message = prompts.message(prompt)
     try:
         if test:
             response = prompt.mock_response()
         else:
-            response = chat([message]).content
-            time.sleep(rate_limit)
-        results = prompt.parse_response(response)
+            if cache:
+                response = cache.read(case_id, prompt.name)
+            if response is None:
+                response = chat([message]).content
+                print(f"Sleeping for {rate_limit}")
+                time.sleep(rate_limit)
     except Exception as e:
-        results = prompt.wrap_error(str(e))
+        if cache:
+            cache.write(case_id, prompt.name, str(e))  # FIXME
+        return prompt.wrap_error(str(e))
     if cache:
-        cache_write(cache, case_id, prompt.name, results)
-    return results
+        cache.write(case_id, prompt.name, response)
+    return prompt.parse_response(response)
+
+
+def make_headers(prompts):
+    headers = []
+    for prompt in prompts.next_prompt():
+        headers.extend(prompt.headers)
+    return headers
 
 
 def classify():
@@ -107,15 +126,19 @@ def classify():
             temperature=cf["TEMPERATURE"],
         )
 
-    rate_limit = cf.get(cf["RATE_LIMIT"], 5)
+    rate_limit = cf.get("RATE_LIMIT", 5)
     spreadsheet = cf["OUTPUT"]
-    cache = cf["CACHE"]
+    cache_dir = cf.get("CACHE", "")
+    cache = None
+    if cache_dir:
+        cache = Cache(cache)
 
     workbook = Workbook()
     worksheet = workbook.active
 
     if not args.prompt:
-        worksheet.append(["file", "mnc"])  # fixme headers
+        headers = make_headers(prompts)
+        worksheet.append(["file", "mnc"] + headers)
 
     if args.case:
         case = Path(cf["INPUT"]) / Path(args.case)
