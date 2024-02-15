@@ -22,24 +22,6 @@ def load_case(casefile):
         return json.load(file)
 
 
-def cache_write(cache, case_id, filename, results):
-    cache_dir = Path(cache) / Path(case_id)
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    cache_file = cache_dir / Path(filename)
-    with open(cache_file, "w") as fh:
-        fh.write(results)
-
-
-def cache_read(cache, case_id, filename):
-    cache_file = Path(cache) / Path(case_id) / Path(filename)
-    if cache_file.is_file():
-        with open(cache_file, "r") as fh:
-            results = fh.read()
-            return results
-    else:
-        return None
-
-
 def run_prompt(
     chat, prompts, prompt, test=False, rate_limit=5, cache=None, case_id=None
 ):
@@ -131,7 +113,7 @@ def classify():
     cache_dir = cf.get("CACHE", "")
     cache = None
     if cache_dir:
-        cache = Cache(cache)
+        cache = Cache(cache_dir)
 
     workbook = Workbook()
     worksheet = workbook.active
