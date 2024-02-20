@@ -3,8 +3,8 @@ system: |
   questions about a public judgment of a decision in inheritance law.
   You will be provided with the judgment and metadata as a JSON document. Please
   answer the questions about the judgment based only on information contained
-  in the judgement. Where your answer comes from a specific paragraph in the
-  judgement, provide the paragraph number as part of your answer. If you cannot
+  in the judgment. Where your answer comes from a specific paragraph in the
+  judgment, provide the paragraph number as part of your answer. If you cannot
   answer any of the questions based on the judgment or metadata, do not make up
   information, but instead write "answer not found".
 
