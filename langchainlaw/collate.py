@@ -16,16 +16,19 @@ def load_config(cf_file):
 
 
 def find_cached_results(cache, uri, field):
+    if uri is None:
+        print("No case URI")
+        return None
     m = URI_RE.match(uri)
     if m:
         caseid = m.group(1)
         try:
-            print(f"find_cached_results id: {caseid} file: {field}")
-            return Cache.read(caseid, field)
+            return cache.read(caseid, field)
         except Exception as e:
             print(f"Cache read failed: {e}")
             return None
     else:
+        print("Couldn't match URI")
         return None
 
 
