@@ -15,23 +15,6 @@ def load_config(cf_file):
         return cf
 
 
-def find_cached_results(cache, uri, field):
-    if uri is None:
-        print("No case URI")
-        return None
-    m = URI_RE.match(uri)
-    if m:
-        caseid = m.group(1)
-        try:
-            return cache.read(caseid, field)
-        except Exception as e:
-            print(f"Cache read failed: {e}")
-            return None
-    else:
-        print("Couldn't match URI")
-        return None
-
-
 def load_spreadsheet(columns, infile):
     wb = load_workbook(infile)
     cases = []
@@ -48,6 +31,25 @@ def load_spreadsheet(columns, infile):
     return cases
 
 
+def parse_case_uri(uri):
+    if uri is None:
+        return None
+    m = URI_RE.match(uri)
+    if m:
+        return m.group(1)
+    return None
+
+
+def find_cached_results(cache, caseid, mapping):
+    mapped = {}
+    for field, spreadsheet in mapping.items():
+        try:
+            mapped[field] = cache.read(caseid, field)
+        except Exception as e:
+            mapped[field] = f"Cache read failed: {e}"
+    return mapped
+
+
 def collate():
     ap = argparse.ArgumentParser("collate-langchain")
     ap.add_argument(
@@ -56,24 +58,14 @@ def collate():
         type=Path,
         help="Config file",
     )
-    ap.add_argument(
-        "--spreadsheet",
-        type=Path,
-        help="Spreadsheet with human classifications",
-    )
     args = ap.parse_args()
     cf = load_config(args.config)
     cases = load_spreadsheet(cf["SPREADSHEET_COLS"], cf["SPREADSHEET_IN"])
     cache = Cache(cf["CACHE"])
     for case in cases:
-        llm_results = find_cached_results(
-            cache,
-            case["uri"],
-            "notional_estate",
-        )
-        if llm_results is None:
-            print(f"Couldn't load cache for {case['uri']} notional_estate")
-        else:
+        case_id = parse_case_uri(case["uri"])
+        if case_id:
+            llm_results = find_cached_results(cache, case_id, cf["MAPPING"])
             print(llm_results)
 
 
