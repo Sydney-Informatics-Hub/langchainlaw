@@ -20,3 +20,7 @@ class Cache:
                 return results
         else:
             return None
+
+    def exists(self, case_id):
+        cache_dir = Path(self.root) / Path(case_id)
+        return cache_dir.exists()
