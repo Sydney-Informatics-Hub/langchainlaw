@@ -120,16 +120,20 @@ def multivalue(column, mapping, llm_json, ra_case):
             logger.warning(f"JSON parse error in {column}: {e}")
             logger.warning(f"JSON: {llm_json}")
             llm_values = [["" for _ in mapping]]
+            llm_values[0][0] = str(e)
     return llm_values, ra_values
 
 
-def add_case_to_worksheet(ws, row, case_id, citation, out_cols, ra_case, llm_results):
+def add_case_to_worksheet(ws, row, case_id, title, out_cols, ra_case, llm_results):
     """Add the RA values and the llm values for a single case to the worksheet.
     Multiple values from the LLM are spanned over multiple rows and the y-index
     for the next row is returned"""
-    ws.cell(row=row, column=1).value = case_id
-    ws.cell(row=row, column=2).value = citation
-    c = 3
+    for r in [row, row + 1]:
+        ws.cell(row=r, column=1).value = case_id
+        ws.cell(row=r, column=2).value = title
+    ws.cell(row=row, column=3).value = "RA"
+    ws.cell(row=row + 1, column=3).value = "LLM"
+    c = 4
     m = row
     print(f"Crosswalking {case_id}")
     for col, mapping in out_cols.items():
@@ -145,7 +149,7 @@ def add_case_to_worksheet(ws, row, case_id, citation, out_cols, ra_case, llm_res
         else:
             llm_values, ra_values = multivalue(col, mapping, llm_results[col], ra_case)
             for i in range(len(ra_values)):
-                j = 0
+                j = 1
                 ws.cell(row=row, column=c + i).value = ra_values[i]
                 for ll_set in llm_values:
                     ws.cell(row=row + j, column=c + i).value = ll_set[i]
@@ -172,12 +176,12 @@ def collate():
     cache = Cache(cf["CACHE"])
     results = Workbook()
     ws = results.active
-    headers = ["case_id", "citation"] + list(out_cols.keys())
+    headers = ["case_id", "citation", "source"] + list(out_cols.keys())
     ws.append(headers)
     row = 2
     for ra_case in ra_cases:
         case_id = parse_case_uri(ra_case["uri"])
-        citation = ra_case["mnc"]
+        title = ra_case["title"]
         if case_id:
             llm_results = find_cached_results(cache, case_id, out_cols)
             if llm_results is not None:
@@ -185,13 +189,13 @@ def collate():
                     ws,
                     row,
                     case_id,
-                    citation,
+                    title,
                     out_cols,
                     ra_case,
                     llm_results,
                 )
     results.save(cf["SPREADSHEET_OUT"])
-    logger.info("Wrote collated results to " + cf["SPREADSHEET_OUT"])
+    logger.warning("Wrote collated results to " + cf["SPREADSHEET_OUT"])
 
 
 if __name__ == "__main__":
