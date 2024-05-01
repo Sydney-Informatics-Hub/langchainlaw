@@ -67,19 +67,20 @@ def find_cached_results(cache, caseid, mapping):
     return mapped
 
 
-def col_headers(field, mapping):
-    """header or headers for a field, depending on mapping"""
-    if type(mapping) is str:
-        return [field]
-    else:
-        return list(mapping.keys())
-
-
 def make_headers(out_cols):
     """Take the output columns and return a list of column headings by
     expanding the keys for multivalue columns"""
-    nested = [col_headers(col, out_cols[col]) for col in out_cols.keys()]
-    return sum(nested, [])
+    header = []
+    subhead = []
+    for col, mapping in out_cols.items():
+        header.append(col)
+        if type(mapping) is str:
+            subhead.append("")
+        else:
+            subheads = list(mapping.keys())
+            header += ["" for _ in subheads[1:]]
+            subhead += subheads
+    return header, subhead
 
 
 def multivalue(column, mapping, llm_json, ra_case):
@@ -191,9 +192,10 @@ def collate():
     cache = Cache(cf["CACHE"])
     results = Workbook()
     ws = results.active
-    headers = ["case_id", "citation", "source"] + make_headers(out_cols)
-    ws.append(headers)
-    row = 2
+    headers, subheads = make_headers(out_cols)
+    ws.append(["case_id", "citation", "source"] + headers)
+    ws.append(["", "", ""] + subheads)
+    row = 3
     for ra_case in ra_cases:
         case_id = parse_case_uri(ra_case["uri"])
         title = ra_case["title"]
