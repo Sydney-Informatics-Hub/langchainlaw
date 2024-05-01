@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 URI_RE = re.compile("https://www.caselaw.nsw.gov.au/decision/([0-9a-f]+)")
 
-MAX_RE = re.compile("maximum content length")
+MAX_RE = re.compile("context length")
 
 
 def load_config(cf_file):
@@ -53,13 +53,12 @@ def find_cached_results(cache, caseid, mapping):
     the case isn't in the cache or if the LLM request failed."""
     mapped = {}
     if not cache.exists(caseid):
-        logger.warning(f"Case {caseid} not in cache")
+        logger.debug(f"Case {caseid} not in cache")
         return None
     for field, spreadsheet in mapping.items():
         try:
             mapped[field] = cache.read(caseid, field)
-            logger.debug(f"{caseid} {field} {mapped[field]}")
-            if MAX_RE.match(mapped[field]):
+            if MAX_RE.search(mapped[field]):
                 logger.warning(f"Case {caseid} exceeded token length")
                 return None
         except Exception as e:
