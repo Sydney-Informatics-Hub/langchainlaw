@@ -79,7 +79,7 @@ def classify():
     if args.case:
         case = Path(cf["INPUT"]) / Path(args.case)
         if not case.is_file():
-            print(f"Case file {args.case} not found")
+            print(f"Case file {case} not found")
             sys.exit()
         cases = [case]
     else:
