@@ -4,7 +4,7 @@ import json
 import sys
 import traceback
 
-from langchain.schema import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 
 
 class PromptException(Exception):
