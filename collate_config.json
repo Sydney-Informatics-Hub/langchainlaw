@@ -97,35 +97,22 @@
         "family_home": "family_home",
         "notional_estate": "notional_estate",
         "distribution": "distribution",
-        "claimant": {
+        "parties": {
             "name": null, 
             "role_in_trial": null,
-            "representatives": null,
-            "costs": null,
+            "legal_representatives": null,
             "natural_person": null,
-            "relationship_to_party": "claimant_relationship_to_party",
-            "is_dependant": "claimant_is_dependant",
-            "misconduct": "claimant_misconduct",
-            "estranged": "claimant_estranged",
-            "financial": "claimant_financial",
-            "family": "claimant_family",
-            "illegal": "claimant_illegal",
-            "contingent": "claimant_contingent" 
-        }, 
-        "defendant": {
-            "name": null, 
-            "role_in_trial": null,
-            "representatives": null,
-            "costs": null,
-            "natural_person": null,
-            "relationship_to_party": "defendant_relationship_to_party",
-            "is_dependant": "defendant_is_dependant",
-            "misconduct": "defendant_misconduct",
-            "estranged": "defendant_estranged",
-            "financial": "defendant_financial",
-            "family": "defendant_family",
-            "illegal": "defendant_illegal",
-            "contingent": "defendant_contingent" 
-        } 
+            "relationship_to_party": "_relationship_to_party",
+            "is_dependant": "_is_dependant",
+            "misconduct": "_misconduct",
+            "estranged": "_estranged",
+            "financial": "_financial",
+            "family": "_family",
+            "illegal": "_illegal",
+            "contingent": "_contingent" 
+        }
+    },
+    "SPREADSHEET_IN_MULTI_PREFIX": {
+        "parties": [ "claimant", "defendant" ]
     }
 }

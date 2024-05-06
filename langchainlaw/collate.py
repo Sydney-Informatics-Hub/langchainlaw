@@ -83,7 +83,7 @@ def make_headers(out_cols):
     return header, subhead
 
 
-def multivalue(column, mapping, llm_json, ra_case):
+def multivalue(column, mapping, ra_prefix, llm_json, ra_case):
     """Maps a multivalue result to columns for the llm and ra
     tables. Returns two arrays to be concatenated as rows. For example, with
     a mapping as follows
@@ -100,13 +100,13 @@ def multivalue(column, mapping, llm_json, ra_case):
 
     and the Ra value for will_date: "2008/01/12"
 
-    This will return the following tuple llm_cols, ra_cols
+    This will return the following tuple llm_values, ra_values
 
     [ [ "Foo", "9", "2008/01/10" ] ] # the llm values
-    [ "",     "", "2008/01/12" ]  # the RA values with None for missing fields
+    [ [ ]"",     "", "2008/01/12" ] ]  # the RA values with None for missing fields
 
-    LLM values are returned as a list of lists because there can be multiple
-    values. These should be written into the spreadsheet as rows, like so
+    Values are returned as a list of lists because there can be multiple
+    values for a case
 
       "name", "role_in_trial", "representatives", "costs", "natural_person"[..]
       "Fred", "claimant", "Barristers", "yes", "yes"
@@ -116,18 +116,29 @@ def multivalue(column, mapping, llm_json, ra_case):
 
     """
     ra_values = []
-    # assume ra_values only have one set
-    for llm_col, ra_col in mapping.items():
-        if ra_col is not None:
-            ra_values.append(ra_case[ra_col])
-        else:
-            ra_values.append("")
+    if column in ra_prefix:
+        for prefix in ra_prefix[column]:
+            ra_set = []
+            for llm_col, ra_col in mapping.items():
+                if ra_col is not None:
+                    print(f"prefix {prefix} ra_col {ra_col}")
+                    ra_set.append(ra_case.get(prefix + ra_col))
+                else:
+                    ra_set.append("")
+            ra_values.append(ra_set)
+    else:
+        ra_set = []
+        for llm_col, ra_col in mapping.items():
+            if ra_col is not None:
+                ra_set.append(ra_case[ra_col])
+            else:
+                ra_set.append("")
+        ra_values = [ra_set]
     # parse the llm json and build a row for each set of values
     llm_values = []
     if llm_json is None:
         llm_values = [["" for _ in mapping]]
     else:
-        # this makes too many assumptions about the state of the JSON it gets
         try:
             llm_parsed = json.loads(llm_json)
             for llm_set in llm_parsed:
@@ -140,7 +151,9 @@ def multivalue(column, mapping, llm_json, ra_case):
     return llm_values, ra_values
 
 
-def add_case_to_worksheet(ws, row, case_id, title, out_cols, ra_case, llm_results):
+def add_case_to_worksheet(
+    ws, row, case_id, title, out_cols, ra_prefix, ra_case, llm_results
+):
     """Add the RA values and the llm values for a single case to the worksheet.
     Multiple values from the LLM are spanned over multiple rows and the y-index
     for the next row is returned"""
@@ -163,10 +176,15 @@ def add_case_to_worksheet(ws, row, case_id, title, out_cols, ra_case, llm_result
             ws.cell(row=row + 1, column=c).value = llm_results[col]
             c = c + 1
         else:
-            llm_values, ra_values = multivalue(col, mapping, llm_results[col], ra_case)
-            for i in range(len(ra_values)):
+            llm_values, ra_values = multivalue(
+                col, mapping, ra_prefix, llm_results[col], ra_case
+            )
+            print(llm_values, ra_values)
+            for i in range(len(ra_values[0])):
                 j = 1
-                ws.cell(row=row, column=c + i).value = ra_values[i]
+                for ra_set in ra_values:
+                    ws.cell(row=row, column=c + i).value = ra_set[i]
+                    j += 1
                 for ll_set in llm_values:
                     ws.cell(row=row + j, column=c + i).value = ll_set[i]
                     j += 1
@@ -188,6 +206,7 @@ def collate():
     cf = load_config(args.config)
     in_cols = cf["SPREADSHEET_IN_COLS"]
     out_cols = cf["SPREADSHEET_OUT_COLS"]
+    ra_prefix = cf["SPREADSHEET_IN_MULTI_PREFIX"]
     ra_cases = load_spreadsheet(in_cols, cf["SPREADSHEET_IN"])
     cache = Cache(cf["CACHE"])
     results = Workbook()
@@ -208,6 +227,7 @@ def collate():
                     case_id,
                     title,
                     out_cols,
+                    ra_prefix,
                     ra_case,
                     llm_results,
                 )
