@@ -121,7 +121,6 @@ def multivalue(column, mapping, ra_prefix, llm_json, ra_case):
             ra_set = []
             for llm_col, ra_col in mapping.items():
                 if ra_col is not None:
-                    print(f"prefix {prefix} ra_col {ra_col}")
                     ra_set.append(ra_case.get(prefix + ra_col))
                 else:
                     ra_set.append("")
@@ -183,7 +182,7 @@ def add_case_to_worksheet(
             for i in range(len(ra_values[0])):
                 j = 1
                 for ra_set in ra_values:
-                    ws.cell(row=row, column=c + i).value = ra_set[i]
+                    ws.cell(row=row + j, column=c + i).value = ra_set[i]
                     j += 1
                 for ll_set in llm_values:
                     ws.cell(row=row + j, column=c + i).value = ll_set[i]
