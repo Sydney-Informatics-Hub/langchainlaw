@@ -105,7 +105,7 @@
         "parties": {
             "name": null, 
             "role_in_trial": null,
-            "legal_representatives": null,
+            "legal_representatives": "_representatives",
             "natural_person": null,
             "relationship_to_party": "_relationship_to_party",
             "is_dependant": "_is_dependant",
