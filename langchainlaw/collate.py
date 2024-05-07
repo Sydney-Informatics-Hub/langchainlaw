@@ -159,66 +159,51 @@ def add_case_to_worksheet(
 ):
     """Add the RA values and the llm values for a single case to the worksheet.
     Both of these values can span multiple rows, this returns the row number
-    for the next row.
+    for the next row."""
 
-    This function is a mess but I need to get it working as-is rather than
-    do a big refactor."""
+    llm_cols = []
+    ra_cols = []
 
-    c = 4
-    rarow = row
-
-    # first pass - write the RA values and save the LLM values, so
-    # that we can figure out how many rows the RA values took
-
-    llm_multivalues = {}
-
-    m = row
-    c = 4
     for col, mapping in out_cols.items():
         if type(mapping) is str:
-            ws.cell(row=row, column=c).value = ra_case.get(mapping, "")
-            c = c + 1
+            ra_cols.append([ra_case.get(mapping, "")])
+            llm_cols.append([llm_results[col]])
         else:
             llm_values, ra_values = multivalue(
                 col, mapping, ra_prefix, llm_results[col], ra_case
             )
             width = len(ra_values[0])
             for i in range(width):
-                j = 1
-                for ra_set in ra_values:
-                    ws.cell(row=row + j, column=c + i).value = ra_set[i]
-                    j += 1
-                llm_multivalues[col] = llm_values
-            c = c + width
-            if row + j > m:
-                m = row + j
+                ra_cols.append([ra_set[i] for ra_set in ra_values])
+                llm_cols.append([llm_set[i] for llm_set in llm_values])
 
-    # second pass - now we know the rows taken up by the RA values,
-    # write the LLM values
+    ra_height = max([len(c) for c in ra_cols])
+    llm_height = max([len(c) for c in llm_cols])
+    llm_row = row + ra_height
 
-    c = 4
-    llmrow = m
-    for col, mapping in out_cols.items():
-        if type(mapping) is str:
-            ws.cell(row=llmrow, column=c).value = llm_results[col]
-            c = c + 1
-        else:
-            width = len(llm_multivalues[col][0])
-            for i in range(width):
-                j = 1
-                for llm_set in llm_multivalues[col]:
-                    ws.cell(row=llmrow + j, column=c + i).value = llm_set[i]
-                    j += 1
-            c = c + width
-            if llmrow + j > m:
-                m = llmrow + j
-
-    for r in [rarow, llmrow]:
+    for r in [row, llm_row]:
         ws.cell(row=r, column=1).value = case_id
         ws.cell(row=r, column=2).value = title
-    ws.cell(row=rarow, column=3).value = "RA"
-    ws.cell(row=llmrow, column=3).value = "LLM"
-    return m
+    ws.cell(row=row, column=3).value = "RA"
+    ws.cell(row=llm_row, column=3).value = "LLM"
+    col0 = 4
+
+    write_columns(ws, row, col0, ra_cols)
+    write_columns(ws, llm_row, col0, llm_cols)
+
+    for i in range(len(llm_cols)):
+        for j in range(len(llm_cols[i])):
+            ws.cell(row=llm_row + j, column=col0 + i).value = llm_cols[i][j]
+
+    return llm_row + llm_height
+
+
+def write_columns(ws, row, col, columns):
+    """Write a list of columns into a worksheet starting at row, col. The
+    columns can have different heights."""
+    for i in range(len(columns)):
+        for j in range(len(columns[i])):
+            ws.cell(row=row + j, column=col + i).value = columns[i][j]
 
 
 def collate():
