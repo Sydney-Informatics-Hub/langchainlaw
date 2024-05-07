@@ -147,9 +147,10 @@ def multivalue(column, mapping, ra_prefix, llm_json, ra_case):
         except Exception as e:
             logger.warning(f"Parse error in multivalue {column}: {e}")
             logger.warning(f'JSON: "{llm_json}"')
-
+            # fallback: if it can't be parsed as JSON write it into the first
+            # of the multivalue columns
             llm_values = [["" for _ in mapping]]
-            llm_values[0][0] = str(e)
+            llm_values[0][0] = llm_json
     return llm_values, ra_values
 
 
@@ -180,7 +181,8 @@ def add_case_to_worksheet(
             llm_values, ra_values = multivalue(
                 col, mapping, ra_prefix, llm_results[col], ra_case
             )
-            for i in range(len(ra_values[0])):
+            width = len(ra_values[0])
+            for i in range(width):
                 j = 1
                 for ra_set in ra_values:
                     ws.cell(row=row + j, column=c + i).value = ra_set[i]
@@ -190,7 +192,7 @@ def add_case_to_worksheet(
                     j += 1
             if row + j > m:
                 m = row + j
-            c = c + len(ra_values)
+            c = c + width
     return m
 
 
