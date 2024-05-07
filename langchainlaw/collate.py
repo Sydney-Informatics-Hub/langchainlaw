@@ -158,24 +158,25 @@ def add_case_to_worksheet(
     ws, row, case_id, title, out_cols, ra_prefix, ra_case, llm_results
 ):
     """Add the RA values and the llm values for a single case to the worksheet.
-    Multiple values from the LLM are spanned over multiple rows and the y-index
-    for the next row is returned"""
-    for r in [row, row + 1]:
-        ws.cell(row=r, column=1).value = case_id
-        ws.cell(row=r, column=2).value = title
-    ws.cell(row=row, column=3).value = "RA"
-    ws.cell(row=row + 1, column=3).value = "LLM"
+    Both of these values can span multiple rows, this returns the row number
+    for the next row.
+
+    This function is a mess but I need to get it working as-is rather than
+    do a big refactor."""
+
     c = 4
+    rarow = row
+
+    # first pass - write the RA values and save the LLM values, so
+    # that we can figure out how many rows the RA values took
+
+    llm_multivalues = {}
+
     m = row
+    c = 4
     for col, mapping in out_cols.items():
         if type(mapping) is str:
-            try:
-                v = ra_case[mapping]
-            except KeyError as e:
-                print(f"{mapping} couldn't get column {e}")
-                v = ""
-            ws.cell(row=row, column=c).value = v
-            ws.cell(row=row + 1, column=c).value = llm_results[col]
+            ws.cell(row=row, column=c).value = ra_case.get(mapping, "")
             c = c + 1
         else:
             llm_values, ra_values = multivalue(
@@ -187,12 +188,36 @@ def add_case_to_worksheet(
                 for ra_set in ra_values:
                     ws.cell(row=row + j, column=c + i).value = ra_set[i]
                     j += 1
-                for ll_set in llm_values:
-                    ws.cell(row=row + j, column=c + i).value = ll_set[i]
-                    j += 1
+                llm_multivalues[col] = llm_values
+            c = c + width
             if row + j > m:
                 m = row + j
+
+    # second pass - now we know the rows taken up by the RA values,
+    # write the LLM values
+
+    c = 4
+    llmrow = m
+    for col, mapping in out_cols.items():
+        if type(mapping) is str:
+            ws.cell(row=llmrow, column=c).value = llm_results[col]
+            c = c + 1
+        else:
+            width = len(llm_multivalues[col][0])
+            for i in range(width):
+                j = 1
+                for llm_set in llm_multivalues[col]:
+                    ws.cell(row=llmrow + j, column=c + i).value = llm_set[i]
+                    j += 1
             c = c + width
+            if llmrow + j > m:
+                m = llmrow + j
+
+    for r in [rarow, llmrow]:
+        ws.cell(row=r, column=1).value = case_id
+        ws.cell(row=r, column=2).value = title
+    ws.cell(row=rarow, column=3).value = "RA"
+    ws.cell(row=llmrow, column=3).value = "LLM"
     return m
 
 
