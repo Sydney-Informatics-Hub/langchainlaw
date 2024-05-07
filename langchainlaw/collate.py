@@ -191,10 +191,6 @@ def add_case_to_worksheet(
     write_columns(ws, row, col0, ra_cols)
     write_columns(ws, llm_row, col0, llm_cols)
 
-    for i in range(len(llm_cols)):
-        for j in range(len(llm_cols[i])):
-            ws.cell(row=llm_row + j, column=col0 + i).value = llm_cols[i][j]
-
     return llm_row + llm_height
 
 
@@ -204,6 +200,25 @@ def write_columns(ws, row, col, columns):
     for i in range(len(columns)):
         for j in range(len(columns[i])):
             ws.cell(row=row + j, column=col + i).value = columns[i][j]
+
+
+def add_ra_parties(ws, row, col, ra_parties):
+    """Hack to expand the 'parties' field in the RA spreadsheet into the
+    multiple rows in the collated spreadsheet"""
+    json_parties = ra_parties.replace("'", '"')
+    try:
+        parties = json.loads(json_parties)
+        ws.cell(row=row, column=col).value = parties[0]
+        if len(parties) > 2:
+            logger.warning("case has more parties than expected:")
+            logger.warning(str(parties))
+            ws.cell(row=row + 1, column=col).value = ",".join(parties[1:])
+        else:
+            ws.cell(row=row + 1, column=col).value = parties[1]
+    except Exception as e:
+        logger.warning("Expanding RA parties failed")
+        logger.warning(ra_parties)
+        logger.warning(str(e))
 
 
 def collate():
@@ -226,6 +241,7 @@ def collate():
     headers, subheads = make_headers(out_cols)
     ws.append(["case_id", "citation", "source"] + headers)
     ws.append(["", "", ""] + subheads)
+    parties_c = 4 + headers.index("parties")
     row = 3
     for ra_case in ra_cases:
         case_id = parse_case_uri(ra_case["uri"])
@@ -233,7 +249,7 @@ def collate():
         if case_id:
             llm_results = find_cached_results(cache, case_id, out_cols)
             if llm_results is not None:
-                row = add_case_to_worksheet(
+                next_row = add_case_to_worksheet(
                     ws,
                     row,
                     case_id,
@@ -243,15 +259,11 @@ def collate():
                     ra_case,
                     llm_results,
                 )
+                add_ra_parties(ws, row, parties_c, ra_case["parties"])
+                row = next_row
     results.save(cf["SPREADSHEET_OUT"])
     logger.warning("Wrote collated results to " + cf["SPREADSHEET_OUT"])
 
 
 if __name__ == "__main__":
     collate()
-
-
-# what this needs to do
-# collate the results against columns in the original spreadsheet
-
-# so first thing is to map original spreadsheet columns to prompt names
