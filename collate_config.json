@@ -73,7 +73,10 @@
     ],
     "SPREADSHEET_OUT_COLS": {
         "filing_date" : "filing_date",
-        "interlocutory": "interlocutory",
+        "interlocutory": {
+            "interlocutory": "interlocutory",
+            "interlocutory_date": null
+        },
         "executor" : "executor",
         "executor_legal": "executor_legal",
         "mediation": {

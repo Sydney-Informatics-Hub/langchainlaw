@@ -140,11 +140,14 @@ def multivalue(column, mapping, ra_prefix, llm_json, ra_case):
     else:
         try:
             llm_parsed = json.loads(llm_json)
+            if type(llm_parsed) is not list:
+                llm_parsed = [llm_parsed]
             for llm_set in llm_parsed:
                 llm_values.append([llm_set.get(f, "") for f in mapping.keys()])
         except Exception as e:
-            logger.warning(f"JSON parse error in {column}: {e}")
-            logger.warning(f"JSON: {llm_json}")
+            logger.warning(f"Parse error in multivalue {column}: {e}")
+            logger.warning(f'JSON: "{llm_json}"')
+
             llm_values = [["" for _ in mapping]]
             llm_values[0][0] = str(e)
     return llm_values, ra_values
@@ -163,7 +166,6 @@ def add_case_to_worksheet(
     ws.cell(row=row + 1, column=3).value = "LLM"
     c = 4
     m = row
-    print(f"Crosswalking {case_id}")
     for col, mapping in out_cols.items():
         if type(mapping) is str:
             try:
@@ -178,7 +180,6 @@ def add_case_to_worksheet(
             llm_values, ra_values = multivalue(
                 col, mapping, ra_prefix, llm_results[col], ra_case
             )
-            print(llm_values, ra_values)
             for i in range(len(ra_values[0])):
                 j = 1
                 for ra_set in ra_values:
