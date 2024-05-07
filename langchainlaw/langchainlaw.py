@@ -8,6 +8,7 @@ from openpyxl import Workbook
 
 
 from langchainlaw.prompts import CaseChat
+from langchainlaw.cache import Cache
 
 
 def load_config(cf_file):
@@ -19,6 +20,46 @@ def load_config(cf_file):
 def load_case(casefile):
     with open(casefile, "r") as file:
         return json.load(file)
+
+
+def run_prompt(
+    chat, prompts, prompt, test=False, rate_limit=5, cache=None, case_id=None
+):
+    """Actually send prompt to LLM, unless there's already a response in the
+    cache.
+
+    response == what we get back from the LLM (text or json)
+    results == a list of values to be written into the spreadsheet
+
+    The cache is response, not results - if we read from the cache we re-parse
+    the response if required (for json prompts)
+
+    """
+    message = prompts.message(prompt)
+    try:
+        if test:
+            response = prompt.mock_response()
+        else:
+            if cache:
+                response = cache.read(case_id, prompt.name)
+            if response is None:
+                response = chat([message]).content
+                print(f"Sleeping for {rate_limit}")
+                time.sleep(rate_limit)
+    except Exception as e:
+        if cache:
+            cache.write(case_id, prompt.name, str(e))  # FIXME
+        return prompt.wrap_error(str(e))
+    if cache:
+        cache.write(case_id, prompt.name, response)
+    return prompt.parse_response(response)
+
+
+def make_headers(prompts):
+    headers = []
+    for prompt in prompts.next_prompt():
+        headers.extend(prompt.headers)
+    return headers
 
 
 def classify():
@@ -67,14 +108,19 @@ def classify():
             temperature=cf["TEMPERATURE"],
         )
 
-    rate_limit = cf.get(cf["RATE_LIMIT"], 5)
+    rate_limit = cf.get("RATE_LIMIT", 5)
     spreadsheet = cf["OUTPUT"]
+    cache_dir = cf.get("CACHE", "")
+    cache = None
+    if cache_dir:
+        cache = Cache(cache_dir)
 
     workbook = Workbook()
     worksheet = workbook.active
 
     if not args.prompt:
-        worksheet.append(["file", "mnc"])  # fixme headers
+        headers = make_headers(prompts)
+        worksheet.append(["file", "mnc"] + headers)
 
     if args.case:
         case = Path(cf["INPUT"]) / Path(args.case)
@@ -86,6 +132,7 @@ def classify():
         cases = Path(cf["INPUT"]).glob("*.json")
 
     for casefile in cases:
+        case_id = casefile.stem
         prompts.judgment = load_case(casefile)
         print("Case: " + prompts.judgment["mnc"])
         row = [str(casefile), prompts.judgment["mnc"]]
@@ -93,32 +140,32 @@ def classify():
         system_prompt = prompts.start_chat()
 
         if not args.test:
-            response = chat([system_prompt])
+            chat([system_prompt])
 
         for prompt in prompts.next_prompt():
             if not args.prompt or prompt.name == args.prompt:
-                print(f"Prompt {prompt.name}")
-                message = prompts.message(prompt)
-                try:
-                    if args.test:
-                        response = prompt.mock_response()
-                    else:
-                        response = chat([message])
-                    results = prompt.parse_response(response.content)
-                except Exception as e:
-                    results = prompt.wrap_error(str(e))
+                print(f"Prompt: {prompt.name}")
+                results = run_prompt(
+                    chat,
+                    prompts,
+                    prompt,
+                    test=args.test,
+                    rate_limit=rate_limit,
+                    cache=cache,
+                    case_id=case_id,
+                )
                 if args.prompt:
                     print(results)
                 else:
                     row += results
-                if not args.test:
-                    print(f"Sleeping {rate_limit}")
-                    time.sleep(rate_limit)
-            if not args.prompt:
-                worksheet.append(row)
+        if not args.prompt:
+            worksheet.append(row)
 
-    # fixme - append to a CSV and then write to spreadsheet?
     if not args.prompt:
+        if args.test:
+            print(f"Writing sample prompts to {spreadsheet}")
+        else:
+            print(f"Writing results to {spreadsheet}")
         workbook.save(spreadsheet)
 
 

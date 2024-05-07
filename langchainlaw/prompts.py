@@ -11,12 +11,23 @@ class PromptException(Exception):
     pass
 
 
+# todo: this would be better as subclasses for the json ones, or make em all
+# json
+
+
 @dataclass
 class CasePrompt:
     name: str
     prompt: str
     return_type: str
     fields: list[str] = field(default_factory=list)
+
+    @property
+    def headers(self):
+        if not self.return_type == "text":
+            return [f"{self.name}:{f}" for f in self.fields]
+        else:
+            return [self.name]
 
     def parse_response(self, response):
         if self.return_type == "text":
@@ -84,7 +95,6 @@ class CaseChat:
     @judgment.setter
     def judgment(self, v):
         self._judgment = v
-        print(v)
         self._intro = self._intro_template.format(judgment=json.dumps(v))
 
     @property
