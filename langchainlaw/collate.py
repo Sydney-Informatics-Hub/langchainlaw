@@ -67,6 +67,9 @@ def load_ra_spreadsheet(config):
                 if case["id"] not in cases:
                     cases[case["id"]] = [case]
                 else:
+                    if not case["mnc"]:
+                        # mnc cells are merged so get it from the first row
+                        case["mnc"] = cases[case["id"]][0]["mnc"]
                     cases[case["id"]].append(case)
             else:
                 uri = case["uri"]
@@ -258,6 +261,17 @@ def add_ra_parties(ws, row, col, ra_parties):
         logger.warning(str(e))
 
 
+def dump_cases(ra_cases):
+    """Dump a precis of the ra_cases to check that the load is working"""
+    for case_id, cases in ra_cases.items():
+        for case in cases:
+            mnc = case["mnc"]
+            uri = case["uri"]
+            title = case["title"]
+            ra = case["RA"]
+            print(f"{case_id},{ra},{uri},{mnc},{title}")
+
+
 def collate():
     ap = argparse.ArgumentParser("collate-langchain")
     ap.add_argument(
@@ -277,7 +291,7 @@ def collate():
     out_cols = cf["SPREADSHEET_OUT_COLS"]
     ra_prefix = cf["SPREADSHEET_IN_MULTI_PREFIX"]
     ra_cases = load_ra_spreadsheet(cf)
-    # print(ra_cases)
+    dump_cases(ra_cases)
     sys.exit(-1)
     cache = Cache(cf["CACHE"])
     results = Workbook()
