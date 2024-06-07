@@ -5,7 +5,6 @@ import json
 from pathlib import Path
 from openpyxl import load_workbook, Workbook
 import re
-import sys
 
 from langchainlaw.cache import Cache
 
@@ -14,6 +13,8 @@ logger = logging.getLogger(__name__)
 URI_RE = re.compile("https://www.caselaw.nsw.gov.au/decision/([0-9a-f]+)")
 
 MAX_RE = re.compile("context length")
+
+DEFENDANT_RE = re.compile("defendant", flags=re.I)
 
 
 def load_config(cf_file):
@@ -75,7 +76,7 @@ def load_ra_spreadsheet(config):
                 uri = case["uri"]
                 row_i = row[0].row
                 logger.warning(f"Row [{row_i}]: Couldn't parse case ID from {uri}")
-    return cases
+    return cols, cases
 
 
 def parse_case_uri(uri):
@@ -261,6 +262,44 @@ def add_ra_parties(ws, row, col, ra_parties):
         logger.warning(str(e))
 
 
+def guess_party(llm_party):
+    if DEFENDANT_RE.search(llm_party):
+        return "defendant"
+    else:
+        return "claimant"
+
+
+def flatten_llm_result(in_cols, mappings, llm_results):
+    """Writes most of the llm results straight into the output columns.
+    For multivalue ones: parties get distributed across the n claimants and
+    n defendants columns, all other multivalues just get written as a JSON
+    dump to one column"""
+    llm_vals = {}
+    party_names = []
+    for col, mapping in mappings.items():
+        if col == "parties":
+            parties_n = {"claimant": 0, "defendant": 0}
+            parties = json.loads(llm_results[col])
+            for party in parties:
+                print(f"party = {party}")
+                party_type = guess_party(party["role_in_trial"])
+                parties_n[party_type] += 1
+                prefix = party_type + "_" + str(parties_n[party_type])
+                party_names.append(party["name"])
+                for llm_col, ra_col in mapping.items():
+                    if ra_col is not None:
+                        llm_vals[f"{prefix}_{ra_col}"] = party[llm_col]
+        else:
+            if type(mapping) is str:
+                llm_vals[mapping] = llm_results[col]
+            else:
+                # assumes that for all multivalues apart from parties, col is
+                # in out_cols
+                llm_vals[col] = json.dumps(llm_results[col])
+    llm_vals["parties"] = json.dumps(party_names)
+    return [llm_vals.get(c, "-") for c in in_cols]
+
+
 def dump_cases(ra_cases):
     """Dump a precis of the ra_cases to check that the load is working"""
     for case_id, cases in ra_cases.items():
@@ -270,6 +309,22 @@ def dump_cases(ra_cases):
             title = case["title"]
             ra = case["RA"]
             print(f"{case_id},{ra},{uri},{mnc},{title}")
+
+
+def test_flatten(cf):
+    """test flattening on cases which aren't in the RA spreadsheet"""
+    cache_dir = Path(cf["CACHE"])
+    cache = Cache(cf["CACHE"])
+    mapping = cf["SPREADSHEET_OUT_COLS"]
+    full_cols = expand_ra_cols(cf)
+    for item in cache_dir.glob("*"):
+        if item.is_dir():
+            case_id = item.name
+            print(case_id)
+            llm_results = find_cached_results(cache, case_id, mapping)
+            if llm_results is not None:
+                llm_cols = flatten_llm_result(full_cols, mapping, llm_results)
+                print(llm_cols)
 
 
 def collate():
@@ -288,37 +343,23 @@ def collate():
     )
     args = ap.parse_args()
     cf = load_config(args.config)
-    out_cols = cf["SPREADSHEET_OUT_COLS"]
-    ra_prefix = cf["SPREADSHEET_IN_MULTI_PREFIX"]
-    ra_cases = load_ra_spreadsheet(cf)
-    dump_cases(ra_cases)
-    sys.exit(-1)
+    cols, ra_cases = load_ra_spreadsheet(cf)
+    mappings = cf["SPREADSHEET_OUT_COLS"]
     cache = Cache(cf["CACHE"])
     results = Workbook()
     ws = results.active
-    headers, subheads = make_headers(out_cols)
-    ws.append(["case_id", "citation", "source"] + headers)
-    ws.append(["", "", ""] + subheads)
-    parties_c = 4 + headers.index("parties")
-    row = 3
-    for ra_case in ra_cases:
-        case_id = parse_case_uri(ra_case["uri"])
-        title = ra_case["title"]
-        if case_id:
-            llm_results = find_cached_results(cache, case_id, out_cols)
-            if llm_results is not None:
-                next_row = add_case_to_worksheet(
-                    ws,
-                    row,
-                    case_id,
-                    title,
-                    out_cols,
-                    ra_prefix,
-                    ra_case,
-                    llm_results,
-                )
-                add_ra_parties(ws, row, parties_c, ra_case["parties"])
-                row = next_row
+    ws.append(cols)
+    for case_id, ra_case in ra_cases.items():
+        mnc = None
+        for ra_row in ra_case:
+            ws.append([ra_row[c] for c in cols])
+            mnc = ra_row["mnc"]
+        llm_results = find_cached_results(cache, case_id, mappings)
+        if llm_results is not None:
+            llm_cols = flatten_llm_result(cols, llm_results)
+            ws.append(llm_cols)
+        else:
+            ws.append([mnc, "LLM", "No results"])
     results.save(cf["SPREADSHEET_OUT"])
     logger.warning("Wrote collated results to " + cf["SPREADSHEET_OUT"])
 
