@@ -56,18 +56,22 @@ def load_ra_spreadsheet(config):
     cases = {}
     header = True
     cols = expand_ra_cols(config)
-    print(cols)
-    sys.exit(-1)
     wb = load_workbook(config["SPREADSHEET_IN"])
     for row in wb.active:
         if header:
             header = False
         else:
-            case = dict(zip(cols, row))
-            if case["id"] not in cases:
-                cases[case["id"]] = [case]
+            case = dict(zip(cols, [cell.value for cell in row]))
+            case["id"] = parse_case_uri(case["uri"])
+            if case["id"]:
+                if case["id"] not in cases:
+                    cases[case["id"]] = [case]
+                else:
+                    cases[case["id"]].append(case)
             else:
-                cases[case["id"]].append(case)
+                uri = case["uri"]
+                row_i = row[0].row
+                logger.warning(f"Row [{row_i}]: Couldn't parse case ID from {uri}")
     return cases
 
 
@@ -270,10 +274,11 @@ def collate():
     )
     args = ap.parse_args()
     cf = load_config(args.config)
-    # in_cols = cf["SPREADSHEET_IN_COLS"]
     out_cols = cf["SPREADSHEET_OUT_COLS"]
     ra_prefix = cf["SPREADSHEET_IN_MULTI_PREFIX"]
     ra_cases = load_ra_spreadsheet(cf)
+    # print(ra_cases)
+    sys.exit(-1)
     cache = Cache(cf["CACHE"])
     results = Workbook()
     ws = results.active
