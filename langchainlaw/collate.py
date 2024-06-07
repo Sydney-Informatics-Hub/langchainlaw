@@ -1,9 +1,11 @@
 import argparse
 import logging
+from itertools import chain
 import json
 from pathlib import Path
 from openpyxl import load_workbook, Workbook
 import re
+import sys
 
 from langchainlaw.cache import Cache
 
@@ -21,20 +23,51 @@ def load_config(cf_file):
         return cf
 
 
-def load_spreadsheet(columns, infile):
-    """Load the spreadsheet with the RA's summary of the case"""
-    wb = load_workbook(infile)
-    cases = []
-    ncols = len(columns)
+def expand_ra_cols(cf):
+    """Looks for columns CLAIMANT and DEFENDANT in the list of input
+    columns amd expands them out to n sets of columns from PARTIES_IN_COLS
+    for each category, so we end up with
+
+    claimant_1_relationship_to_party
+    claimant_1_is_dependant
+    [...]
+    claimant_2_relationship_to_party
+    claimant_2_is_dependant
+    [...]
+
+    and so on
+    """
+
+    base = [[c] for c in cf["SPREADSHEET_IN_COLS"]]
+    party_cols = cf["PARTIES_IN_COLS"]
+    n = cf["PARTIES_N"]
+    for p in ["CLAIMANT", "DEFENDANT"]:
+        partytype = p.lower()
+        i = base.index([p])
+        base[i] = [f"{partytype}_{i + 1}_{col}" for i in range(n) for col in party_cols]
+    return list(chain.from_iterable(base))  # flattens list of lists
+
+
+def load_ra_spreadsheet(config):
+    """Load the spreadsheet with the RA's summary of the cases
+
+    Returns a dict of ID -> list of spreadsheet rows
+    """
+    cases = {}
     header = True
+    cols = expand_ra_cols(config)
+    print(cols)
+    sys.exit(-1)
+    wb = load_workbook(config["SPREADSHEET_IN"])
     for row in wb.active:
         if header:
             header = False
         else:
-            case = {}
-            for i in range(ncols):
-                case[columns[i]] = row[i].value
-            cases.append(case)
+            case = dict(zip(cols, row))
+            if case["id"] not in cases:
+                cases[case["id"]] = [case]
+            else:
+                cases[case["id"]].append(case)
     return cases
 
 
@@ -229,12 +262,18 @@ def collate():
         type=Path,
         help="Config file",
     )
+    ap.add_argument(
+        "--flatten",
+        action="store_true",
+        default=False,
+        help="Flatten multiple results into a single row",
+    )
     args = ap.parse_args()
     cf = load_config(args.config)
-    in_cols = cf["SPREADSHEET_IN_COLS"]
+    # in_cols = cf["SPREADSHEET_IN_COLS"]
     out_cols = cf["SPREADSHEET_OUT_COLS"]
     ra_prefix = cf["SPREADSHEET_IN_MULTI_PREFIX"]
-    ra_cases = load_spreadsheet(in_cols, cf["SPREADSHEET_IN"])
+    ra_cases = load_ra_spreadsheet(cf)
     cache = Cache(cf["CACHE"])
     results = Workbook()
     ws = results.active
