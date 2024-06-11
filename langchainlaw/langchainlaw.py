@@ -1,7 +1,6 @@
 import argparse
 import json
 import sys
-import os
 import time
 from pathlib import Path
 from langchain_openai import AzureChatOpenAI
@@ -62,13 +61,9 @@ def classify():
     chat = None
     if not args.test:
         llm_cf = cf["LLM"]["USYD_AZURE"]
-        # fixme drop in other models here
-        os.environ["AZURE_OPENAI_API_KEY"] = llm_cf["API_KEY"]
-        os.environ["AZURE_OPENAI_ENDPOINT"] = llm_cf["ENDPOINT"]
-        os.environ["AZURE_OPENAI_API_VERSION"] = llm_cf["API_VERSION"]
-        os.environ["AZURE_OPENAI_CHAT_DEPLOYMENT_NAME"] = llm_cf["DEPLOYMENT"]
         chat = AzureChatOpenAI(
-            azure_deployment=llm_cf["DEPLOYMENT"],
+            default_headers={"Ocp-Apim-Subscription-Key": llm_cf["API_KEY"]},
+            deployment_name=llm_cf["DEPLOYMENT_NAME"],
             openai_api_version=llm_cf["API_VERSION"],
             temperature=cf["TEMPERATURE"],
         )
