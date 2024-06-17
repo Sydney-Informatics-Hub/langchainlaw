@@ -178,7 +178,7 @@ prompts:
           "role_in_trial": "Plaintiff"
           "legal_representatives": "Alan Smithee, QC"
           "natural_person": "true",
-          "relationship_to_party": "son",
+          "relationship_to_deceased": "son",
           "is_dependant": "true (p9)",
           "misconduct": "false",
           "estranged": "false",
