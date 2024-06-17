@@ -9,10 +9,13 @@ import re
 from langchainlaw.cache import Cache
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 URI_RE = re.compile("https://www.caselaw.nsw.gov.au/decision/([0-9a-f]+)")
 
 MAX_RE = re.compile("context length")
+
+JSON_QUOTE_RE = re.compile("```json(.*)```")
 
 DEFENDANT_RE = re.compile("defendant", flags=re.I)
 
@@ -124,125 +127,6 @@ def make_headers(out_cols):
     return header, subhead
 
 
-def multivalue(column, mapping, ra_prefix, llm_json, ra_case):
-    """Maps a multivalue result to columns for the llm and ra
-    tables. Returns two arrays to be concatenated as rows. For example, with
-    a mapping as follows
-
-        "will_date": {
-            "document": null,
-            "paragraph": null,
-            "date": "will_date"
-        },
-
-    and the llm_values a JSON string like
-
-    '[ { "document": "Foo", "paragraph": "9", "date": "2008/01/10"}]'
-
-    and the Ra value for will_date: "2008/01/12"
-
-    This will return the following tuple llm_values, ra_values
-
-    [ [ "Foo", "9", "2008/01/10" ] ] # the llm values
-    [ [ ]"",     "", "2008/01/12" ] ]  # the RA values with None for missing fields
-
-    Values are returned as a list of lists because there can be multiple
-    values for a case
-
-      "name", "role_in_trial", "representatives", "costs", "natural_person"[..]
-      "Fred", "claimant", "Barristers", "yes", "yes"
-      "Selma", "defendant", "Lawyer & sons", "no", "yes"
-
-    It's up to the calling code to turn this into something sensible
-
-    """
-    ra_values = []
-    if column in ra_prefix:
-        for prefix in ra_prefix[column]:
-            ra_set = []
-            for llm_col, ra_col in mapping.items():
-                if ra_col is not None:
-                    ra_set.append(ra_case.get(prefix + ra_col))
-                else:
-                    ra_set.append("")
-            ra_values.append(ra_set)
-    else:
-        ra_set = []
-        for llm_col, ra_col in mapping.items():
-            if ra_col is not None:
-                ra_set.append(ra_case[ra_col])
-            else:
-                ra_set.append("")
-        ra_values = [ra_set]
-    # parse the llm json and build a row for each set of values
-    llm_values = []
-    if llm_json is None:
-        llm_values = [["" for _ in mapping]]
-    else:
-        try:
-            llm_parsed = json.loads(llm_json)
-            if type(llm_parsed) is not list:
-                llm_parsed = [llm_parsed]
-            for llm_set in llm_parsed:
-                llm_values.append([llm_set.get(f, "") for f in mapping.keys()])
-        except Exception as e:
-            logger.warning(f"Parse error in multivalue {column}: {e}")
-            logger.warning(f'JSON: "{llm_json}"')
-            # fallback: if it can't be parsed as JSON write it into the first
-            # of the multivalue columns
-            llm_values = [["" for _ in mapping]]
-            llm_values[0][0] = llm_json
-    return llm_values, ra_values
-
-
-def add_case_to_worksheet(
-    ws, row, case_id, title, out_cols, ra_prefix, ra_case, llm_results
-):
-    """Add the RA values and the llm values for a single case to the worksheet.
-    Both of these values can span multiple rows, this returns the row number
-    for the next row."""
-
-    llm_cols = []
-    ra_cols = []
-
-    for col, mapping in out_cols.items():
-        if type(mapping) is str:
-            ra_cols.append([ra_case.get(mapping, "")])
-            llm_cols.append([llm_results[col]])
-        else:
-            llm_values, ra_values = multivalue(
-                col, mapping, ra_prefix, llm_results[col], ra_case
-            )
-            width = len(ra_values[0])
-            for i in range(width):
-                ra_cols.append([ra_set[i] for ra_set in ra_values])
-                llm_cols.append([llm_set[i] for llm_set in llm_values])
-
-    ra_height = max([len(c) for c in ra_cols])
-    llm_height = max([len(c) for c in llm_cols])
-    llm_row = row + ra_height
-
-    for r in [row, llm_row]:
-        ws.cell(row=r, column=1).value = case_id
-        ws.cell(row=r, column=2).value = title
-    ws.cell(row=row, column=3).value = "RA"
-    ws.cell(row=llm_row, column=3).value = "LLM"
-    col0 = 4
-
-    write_columns(ws, row, col0, ra_cols)
-    write_columns(ws, llm_row, col0, llm_cols)
-
-    return llm_row + llm_height
-
-
-def write_columns(ws, row, col, columns):
-    """Write a list of columns into a worksheet starting at row, col. The
-    columns can have different heights."""
-    for i in range(len(columns)):
-        for j in range(len(columns[i])):
-            ws.cell(row=row + j, column=col + i).value = columns[i][j]
-
-
 def add_ra_parties(ws, row, col, ra_parties):
     """Hack to expand the 'parties' field in the RA spreadsheet into the
     multiple rows in the collated spreadsheet"""
@@ -269,6 +153,33 @@ def guess_party(llm_party):
         return "claimant"
 
 
+def parse_llm_json(llm_json):
+    """Deals with some of the models wrapping JSON in ```json ``` markup"""
+    llm_oneline = llm_json.replace("\n", "")
+    match = JSON_QUOTE_RE.search(llm_oneline)
+    if match:
+        json_raw = match.group(1)
+        try:
+            return json.loads(json_raw)
+        except json.decoder.JSONDecodeError as e:
+            logger.error(f"JSON parse error {e}")
+            logger.error(llm_oneline)
+            return None
+    else:
+        logger.error(f"Couldn't match against json quotes from \n${llm_oneline}")
+        return None
+
+
+def get_from_party(party, field):
+    """Fixes relationship_to_party -> relationship_to_deceased based on
+    an error in the prompt"""
+
+    val = party.get(field, "")
+    if not val and field == "relationship_to_party":
+        val = party.get("relationship_to_deceased")
+    return val
+
+
 def flatten_llm_result(in_cols, mappings, llm_results):
     """Writes most of the llm results straight into the output columns.
     For multivalue ones: parties get distributed across the n claimants and
@@ -279,23 +190,23 @@ def flatten_llm_result(in_cols, mappings, llm_results):
     for col, mapping in mappings.items():
         if col == "parties":
             parties_n = {"claimant": 0, "defendant": 0}
-            parties = json.loads(llm_results[col])
+            parties = parse_llm_json(llm_results[col])
             for party in parties:
-                print(f"party = {party}")
                 party_type = guess_party(party["role_in_trial"])
                 parties_n[party_type] += 1
                 prefix = party_type + "_" + str(parties_n[party_type])
                 party_names.append(party["name"])
                 for llm_col, ra_col in mapping.items():
                     if ra_col is not None:
-                        llm_vals[f"{prefix}_{ra_col}"] = party[llm_col]
+                        llm_vals[f"{prefix}_{ra_col}"] = get_from_party(party, llm_col)
         else:
             if type(mapping) is str:
                 llm_vals[mapping] = llm_results[col]
             else:
                 # assumes that for all multivalues apart from parties, col is
                 # in out_cols
-                llm_vals[col] = json.dumps(llm_results[col])
+                llm_json = parse_llm_json(llm_results[col])  # unquote it
+                llm_vals[col] = json.dumps(llm_json)
     llm_vals["parties"] = json.dumps(party_names)
     return [llm_vals.get(c, "-") for c in in_cols]
 
@@ -350,16 +261,18 @@ def collate():
     ws = results.active
     ws.append(cols)
     for case_id, ra_case in ra_cases.items():
-        mnc = None
+        logger.warning(case_id)
         for ra_row in ra_case:
             ws.append([ra_row[c] for c in cols])
-            mnc = ra_row["mnc"]
         llm_results = find_cached_results(cache, case_id, mappings)
         if llm_results is not None:
-            llm_cols = flatten_llm_result(cols, llm_results)
+            llm_cols = flatten_llm_result(cols, mappings, llm_results)
+            for i in range(11):
+                llm_cols[i] = ra_case[0][cols[i]]
+            llm_cols[1] = "GPT-4o"
             ws.append(llm_cols)
         else:
-            ws.append([mnc, "LLM", "No results"])
+            ws.append([ra_case[0][1], "GPT-4o", "No results"])
     results.save(cf["SPREADSHEET_OUT"])
     logger.warning("Wrote collated results to " + cf["SPREADSHEET_OUT"])
 

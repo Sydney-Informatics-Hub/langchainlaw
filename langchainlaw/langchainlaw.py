@@ -90,6 +90,7 @@ def classify():
     )
     args = ap.parse_args()
     cf = load_config(args.config)
+    api_cf = cf["PROVIDERS"]["SIH_OPENAI"]
     prompts = CaseChat()
 
     if not prompts.load_yaml(cf["PROMPTS"]):
@@ -102,9 +103,9 @@ def classify():
     chat = None
     if not args.test:
         chat = ChatOpenAI(
-            model_name=cf["OPENAI_CHAT_MODEL"],
-            openai_api_key=cf["OPENAI_API_KEY"],
-            openai_organization=cf["OPENAI_ORGANIZATION"],
+            model_name=api_cf["MODEL"],
+            openai_api_key=api_cf["API_KEY"],
+            openai_organization=api_cf["ORGANIZATION"],
             temperature=cf["TEMPERATURE"],
         )
 
