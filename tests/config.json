@@ -9,8 +9,8 @@
     "PROVIDER": "OPENAI",
     "TEMPERATURE": 0,
     "RATE_LIMIT": 60,
-    "INPUT": "./input/",
-    "OUTPUT": "./output/results.xlsx",
-    "CACHE": "./output/cache",
-    "PROMPTS": "./prompts.yaml"
+    "INPUT": "tests/input/",
+    "OUTPUT": "tests/output/results.xlsx",
+    "CACHE": "tests/output/cache",
+    "PROMPTS": "prompts.yaml"
 }

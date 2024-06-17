@@ -1,6 +1,5 @@
 import argparse
 import json
-import sys
 import time
 from pathlib import Path
 from langchain.chat_models import ChatOpenAI
@@ -10,59 +9,143 @@ from openpyxl import Workbook
 from langchainlaw.prompts import CaseChat
 from langchainlaw.cache import Cache
 
+RATE_LIMIT = 60
+
+
+class Classifier:
+    """Class which wraps up the case classifier. Config is a JSON object -
+    see config.example.json"""
+
+    def __init__(self, config):
+        self.provider = config["PROVIDER"]
+        self.api_cf = config["PROVIDERS"][self.provider]
+        self.prompts = CaseChat()
+        # will throw a PromptException if misconfigured
+        self.prompts.load_yaml(config["PROMPTS"])
+        self.test = False
+        self.headers = ["file", "mnc"]
+        for prompt in self.prompts.next_prompt():
+            self.headers.extend(prompt.headers)
+
+        self.chat = ChatOpenAI(
+            model_name=self.api_cf["MODEL"],
+            openai_api_key=self.api_cf["API_KEY"],
+            openai_organization=self.api_cf["ORGANIZATION"],
+            temperature=config["TEMPERATURE"],
+        )
+
+        self.rate_limit = config.get("RATE_LIMIT", RATE_LIMIT)
+        cache_dir = config.get("CACHE", "")
+        self.cache = None
+        if cache_dir:
+            self.cache = Cache(cache_dir)
+
+    def run_prompt(self, case_id, prompt):
+        """Actually send prompt to LLM, unless there's already a response in the
+        cache.
+
+        response == what we get back from the LLM (text or json)
+        results == a list of values to be written into the spreadsheet
+
+        The cache is response, not results - if we read from the cache we re-parse
+        the response if required (for json prompts)
+
+        """
+        message = self.prompts.message(prompt)
+        try:
+            if self.test:
+                response = prompt.mock_response()
+            else:
+                if self.cache:
+                    response = self.cache.read(case_id, prompt.name)
+                if response is None:
+                    response = self.chat([message]).content
+                    time.sleep(self.rate_limit)
+        except Exception as e:
+            if self.cache:
+                self.cache.write(case_id, prompt.name, str(e))  # FIXME
+            return prompt.wrap_error(str(e))
+        if self.cache:
+            self.cache.write(case_id, prompt.name, response)
+        return prompt.parse_response(response)
+
+    def classify(self, casefile, test=False, one_prompt=None):
+        """Run the classifier for a single case and returns the results as a
+        dict by prompt label."""
+        self.test = test
+        case_id = casefile.stem
+        self.prompts.judgment = self.load_case(casefile)
+        results = {"file": str(casefile), "mnc": self.prompts.judgment["mnc"]}
+
+        system_prompt = self.prompts.start_chat()
+
+        if not self.test:
+            self.chat([system_prompt])
+
+        for prompt in self.prompts.next_prompt():
+            if not one_prompt or prompt.name == one_prompt:
+                results[prompt.name] = self.run_prompt(case_id, prompt)
+
+        return results
+
 
 def load_config(cf_file):
+    """Load the config"""
     with open(cf_file, "r") as fh:
         cf = json.load(fh)
         return cf
 
 
 def load_case(casefile):
+    """Load JSON casefile"""
     with open(casefile, "r") as file:
         return json.load(file)
 
 
-def run_prompt(
-    chat, prompts, prompt, test=False, rate_limit=5, cache=None, case_id=None
-):
-    """Actually send prompt to LLM, unless there's already a response in the
-    cache.
+def run_classifier(args):
+    """Initialises a Classifier from the config and runs it over the input
+    directory, writing the results to the specified spreadsheet"""
+    config = load_config(args.config)
+    workbook = Workbook()
+    worksheet = workbook.active
 
-    response == what we get back from the LLM (text or json)
-    results == a list of values to be written into the spreadsheet
+    classifier = Classifier(config)
 
-    The cache is response, not results - if we read from the cache we re-parse
-    the response if required (for json prompts)
+    if args.prompt:
+        if not classifier.prompts.prompt(args.prompt):
+            print(f"No prompt defined with name '{args.prompt}'")
+            return
 
-    """
-    message = prompts.message(prompt)
-    try:
-        if test:
-            response = prompt.mock_response()
-        else:
-            if cache:
-                response = cache.read(case_id, prompt.name)
-            if response is None:
-                response = chat([message]).content
-                print(f"Sleeping for {rate_limit}")
-                time.sleep(rate_limit)
-    except Exception as e:
-        if cache:
-            cache.write(case_id, prompt.name, str(e))  # FIXME
-        return prompt.wrap_error(str(e))
-    if cache:
-        cache.write(case_id, prompt.name, response)
-    return prompt.parse_response(response)
+    if not args.prompt:
+        worksheet.append(["file", "mnc"] + classifier.headers)
+
+    if args.case:
+        case = Path(config["INPUT"]) / Path(args.case)
+        if not case.is_file():
+            print(f"Case file {args.case} not found")
+            return
+        cases = [case]
+    else:
+        cases = Path(config["INPUT"]).glob("*.json")
+
+    if args.prompt:
+        columns = ["file", "mnc", args.prompt]
+    else:
+        columns = classifier.headers
+
+    for casefile in cases:
+        results = classifier.classify(casefile, test=args.test, one_prompt=args.prompt)
+        worksheet.append([results.get(c, "") for c in columns])
+
+    spreadsheet = config["OUTPUT"]
+    if args.test:
+        print(f"Writing sample prompts to {spreadsheet}")
+    else:
+        print(f"Writing results to {spreadsheet}")
+    workbook.save(spreadsheet)
 
 
-def make_headers(prompts):
-    headers = []
-    for prompt in prompts.next_prompt():
-        headers.extend(prompt.headers)
-    return headers
-
-
-def classify():
+if __name__ == "__main__":
     ap = argparse.ArgumentParser("langchain-law")
     ap.add_argument(
         "--config",
@@ -89,86 +172,4 @@ def classify():
         help="Generate results from only one prompt",
     )
     args = ap.parse_args()
-    cf = load_config(args.config)
-    api_cf = cf["PROVIDERS"]["SIH_OPENAI"]
-    prompts = CaseChat()
-
-    if not prompts.load_yaml(cf["PROMPTS"]):
-        sys.exit()
-
-    if args.prompt:
-        if not prompts.prompt(args.prompt):
-            print(f"No prompt defined with name '{args.prompt}'")
-            sys.exit()
-    chat = None
-    if not args.test:
-        chat = ChatOpenAI(
-            model_name=api_cf["MODEL"],
-            openai_api_key=api_cf["API_KEY"],
-            openai_organization=api_cf["ORGANIZATION"],
-            temperature=cf["TEMPERATURE"],
-        )
-
-    rate_limit = cf.get("RATE_LIMIT", 5)
-    spreadsheet = cf["OUTPUT"]
-    cache_dir = cf.get("CACHE", "")
-    cache = None
-    if cache_dir:
-        cache = Cache(cache_dir)
-
-    workbook = Workbook()
-    worksheet = workbook.active
-
-    if not args.prompt:
-        headers = make_headers(prompts)
-        worksheet.append(["file", "mnc"] + headers)
-
-    if args.case:
-        case = Path(cf["INPUT"]) / Path(args.case)
-        if not case.is_file():
-            print(f"Case file {args.case} not found")
-            sys.exit()
-        cases = [case]
-    else:
-        cases = Path(cf["INPUT"]).glob("*.json")
-
-    for casefile in cases:
-        case_id = casefile.stem
-        prompts.judgment = load_case(casefile)
-        print("Case: " + prompts.judgment["mnc"])
-        row = [str(casefile), prompts.judgment["mnc"]]
-
-        system_prompt = prompts.start_chat()
-
-        if not args.test:
-            chat([system_prompt])
-
-        for prompt in prompts.next_prompt():
-            if not args.prompt or prompt.name == args.prompt:
-                print(f"Prompt: {prompt.name}")
-                results = run_prompt(
-                    chat,
-                    prompts,
-                    prompt,
-                    test=args.test,
-                    rate_limit=rate_limit,
-                    cache=cache,
-                    case_id=case_id,
-                )
-                if args.prompt:
-                    print(results)
-                else:
-                    row += results
-        if not args.prompt:
-            worksheet.append(row)
-
-    if not args.prompt:
-        if args.test:
-            print(f"Writing sample prompts to {spreadsheet}")
-        else:
-            print(f"Writing results to {spreadsheet}")
-        workbook.save(spreadsheet)
-
-
-if __name__ == "__main__":
-    classify()
+    run_classifier(args)
