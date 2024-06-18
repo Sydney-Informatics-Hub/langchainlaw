@@ -7,7 +7,7 @@ from openpyxl import load_workbook, Workbook
 import re
 
 from langchainlaw.cache import Cache
-from langchainlaw.langchainlaw import parse_llm_json
+from langchainlaw.prompts import parse_llm_json
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

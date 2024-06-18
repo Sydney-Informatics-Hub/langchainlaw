@@ -5,26 +5,11 @@ from pathlib import Path
 from langchain.chat_models import ChatOpenAI
 from openpyxl import Workbook
 import sys
-import re
 
 from langchainlaw.prompts import CaseChat
 from langchainlaw.cache import Cache
 
 RATE_LIMIT = 60
-
-JSON_QUOTE_RE = re.compile("```json(.*)```")
-
-
-def parse_llm_json(llm_json):
-    """Deals with some of the models wrapping JSON in ```json ``` markup
-    Raises a JSON decode error."""
-    llm_oneline = llm_json.replace("\n", "")
-    match = JSON_QUOTE_RE.search(llm_oneline)
-    if match:
-        json_raw = match.group(1)
-        return json.loads(json_raw)
-    else:
-        return json.loads(llm_json)
 
 
 class Classifier:

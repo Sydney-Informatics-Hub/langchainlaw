@@ -1,4 +1,4 @@
-from langchainlaw.langchainlaw import Classifier, parse_llm_json
+from langchainlaw.langchainlaw import Classifier
 import json
 
 
@@ -8,9 +8,3 @@ def test_classifier():
         cf = json.load(fh)
         classifier = Classifier(cf)
         assert classifier.headers
-
-
-def test_quoted_json(variants_of_json):
-    for case in variants_of_json:
-        parsed = parse_llm_json(case["string"])
-        assert parsed == case["json"]
