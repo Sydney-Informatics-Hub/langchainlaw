@@ -94,7 +94,6 @@ class Classifier:
         for prompt in self.prompts.next_prompt():
             if not one_prompt or prompt.name == one_prompt:
                 results[prompt.name] = self.run_prompt(case_id, prompt)
-
         return results
 
 
@@ -159,6 +158,11 @@ def cli():
 
     for casefile in cases:
         results = classifier.classify(casefile, test=args.test, one_prompt=args.prompt)
+        print(results)
+        col_results = [results.get(c, "") for c in columns]
+        print(columns)
+        print(col_results)
+        # FIXME - the results for multivalue fields are like parties:illegal
         worksheet.append([results.get(c, "") for c in columns])
 
     spreadsheet = config["output"]

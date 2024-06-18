@@ -91,11 +91,7 @@ prompts:
     prompt: when did the deceased die?
 
   - name: will_date
-    return_type: json_multiple
-    fields:
-      - document
-      - paragraph
-      - date
+    return_type: json_literal
     prompt: |
       identify every will, codicil and revocation mentioned in the case and
       the dates when these were made. Return your answer as a list of JSON

@@ -2,8 +2,6 @@ from dataclasses import dataclass, field
 import yaml
 import json
 import re
-import sys
-import traceback
 
 from langchain.schema import HumanMessage, SystemMessage
 
@@ -39,29 +37,34 @@ class CasePrompt:
 
     @property
     def headers(self):
-        if not self.return_type == "text":
-            return [f"{self.name}:{f}" for f in self.fields]
-        else:
+        if self.fields is None:
             return [self.name]
+        else:
+            return [f"{self.name}:{f}" for f in self.fields]
 
     def parse_response(self, response):
         if self.return_type == "text":
-            return [response]
+            return {self.name: response}
         try:
-            decoded = parse_llm_json(response)
+            results = parse_llm_json(response)
+            if self.return_type == "json_literal":
+                return json.dumps(results)
             if self.return_type == "json_multiple":
-                # unpack and flatten
-                unpacked = [self.unpack_object(o) for o in decoded]
-                columns = [column for item in unpacked for column in item]
-            else:
-                columns = self.unpack_object(decoded)
-            return columns
+                return self.multi_json_to_fields(results)
+            return self.json_to_fields(results)
         except Exception as e:
-            traceback.print_exc(file=sys.stderr)
-            return self.wrap_error(str(e))
+            return ["error" + str(e)]
 
-    def unpack_object(self, o):
-        return [o.get(f, "") for f in self.fields]
+    def json_to_fields(self, o):
+        return {f"{self.name}:{f}": o.get(f, "") for f in self.fields}
+
+    def multi_json_to_fields(self, results):
+        """returns a dict with keys like 'parties0:name' for multivalue fields"""
+        return {
+            f"{self.name}{i}:{f}": results[i].get(f, "")
+            for i in range(len(results))
+            for f in self.fields
+        }
 
     def wrap_error(self, msg):
         if self.return_type == "text":
