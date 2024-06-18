@@ -4,12 +4,27 @@ import time
 from pathlib import Path
 from langchain.chat_models import ChatOpenAI
 from openpyxl import Workbook
-
+import sys
+import re
 
 from langchainlaw.prompts import CaseChat
 from langchainlaw.cache import Cache
 
 RATE_LIMIT = 60
+
+JSON_QUOTE_RE = re.compile("```json(.*)```")
+
+
+def parse_llm_json(llm_json):
+    """Deals with some of the models wrapping JSON in ```json ``` markup
+    Raises a JSON decode error."""
+    llm_oneline = llm_json.replace("\n", "")
+    match = JSON_QUOTE_RE.search(llm_oneline)
+    if match:
+        json_raw = match.group(1)
+        return json.loads(json_raw)
+    else:
+        return json.loads(llm_json)
 
 
 class Classifier:
@@ -17,28 +32,37 @@ class Classifier:
     see config.example.json"""
 
     def __init__(self, config):
-        self.provider = config["PROVIDER"]
-        self.api_cf = config["PROVIDERS"][self.provider]
+        self.provider = config["provider"]
+        try:
+            self.api_cf = config["providers"][self.provider]
+        except KeyError:
+            print(f"Unknown provider: {self.provider}")
+            sys.exit(-1)
         self.prompts = CaseChat()
         # will throw a PromptException if misconfigured
-        self.prompts.load_yaml(config["PROMPTS"])
+        self.prompts.load_yaml(config["prompts"])
         self.test = False
         self.headers = ["file", "mnc"]
         for prompt in self.prompts.next_prompt():
             self.headers.extend(prompt.headers)
 
         self.chat = ChatOpenAI(
-            model_name=self.api_cf["MODEL"],
-            openai_api_key=self.api_cf["API_KEY"],
-            openai_organization=self.api_cf["ORGANIZATION"],
-            temperature=config["TEMPERATURE"],
+            model_name=self.api_cf["model"],
+            openai_api_key=self.api_cf["api_key"],
+            openai_organization=self.api_cf["organization"],
+            temperature=config["temperature"],
         )
 
-        self.rate_limit = config.get("RATE_LIMIT", RATE_LIMIT)
-        cache_dir = config.get("CACHE", "")
+        self.rate_limit = config.get("rate_limit", RATE_LIMIT)
+        cache_dir = config.get("cache", None)
         self.cache = None
         if cache_dir:
             self.cache = Cache(cache_dir)
+
+    def load_case(self, casefile):
+        """Load JSON casefile"""
+        with open(casefile, "r") as file:
+            return json.load(file)
 
     def run_prompt(self, case_id, prompt):
         """Actually send prompt to LLM, unless there's already a response in the
@@ -89,63 +113,7 @@ class Classifier:
         return results
 
 
-def load_config(cf_file):
-    """Load the config"""
-    with open(cf_file, "r") as fh:
-        cf = json.load(fh)
-        return cf
-
-
-def load_case(casefile):
-    """Load JSON casefile"""
-    with open(casefile, "r") as file:
-        return json.load(file)
-
-
-def run_classifier(args):
-    """Initialises a Classifier from the config and runs it over the input
-    directory, writing the results to the specified spreadsheet"""
-    config = load_config(args.config)
-    workbook = Workbook()
-    worksheet = workbook.active
-
-    classifier = Classifier(config)
-
-    if args.prompt:
-        if not classifier.prompts.prompt(args.prompt):
-            print(f"No prompt defined with name '{args.prompt}'")
-            return
-
-    if not args.prompt:
-        worksheet.append(["file", "mnc"] + classifier.headers)
-
-    if args.case:
-        case = Path(config["INPUT"]) / Path(args.case)
-        if not case.is_file():
-            print(f"Case file {args.case} not found")
-            return
-        cases = [case]
-    else:
-        cases = Path(config["INPUT"]).glob("*.json")
-
-    if args.prompt:
-        columns = ["file", "mnc", args.prompt]
-    else:
-        columns = classifier.headers
-
-    for casefile in cases:
-        results = classifier.classify(casefile, test=args.test, one_prompt=args.prompt)
-        worksheet.append([results.get(c, "") for c in columns])
-
-    spreadsheet = config["OUTPUT"]
-    if args.test:
-        print(f"Writing sample prompts to {spreadsheet}")
-    else:
-        print(f"Writing results to {spreadsheet}")
-    workbook.save(spreadsheet)
-
-
-if __name__ == "__main__":
+def cli():
     ap = argparse.ArgumentParser("langchain-law")
     ap.add_argument(
         "--config",
@@ -171,5 +139,50 @@ if __name__ == "__main__":
         type=str,
         help="Generate results from only one prompt",
     )
+
     args = ap.parse_args()
-    run_classifier(args)
+
+    with open(args.config, "r") as cfh:
+        config = json.load(cfh)
+
+    workbook = Workbook()
+    worksheet = workbook.active
+
+    classifier = Classifier(config)
+
+    if args.prompt:
+        if not classifier.prompts.prompt(args.prompt):
+            print(f"No prompt defined with name '{args.prompt}'")
+            return
+
+    if not args.prompt:
+        worksheet.append(["file", "mnc"] + classifier.headers)
+
+    if args.case:
+        case = Path(config["input"]) / Path(args.case)
+        if not case.is_file():
+            print(f"Case file {args.case} not found")
+            return
+        cases = [case]
+    else:
+        cases = Path(config["input"]).glob("*.json")
+
+    if args.prompt:
+        columns = ["file", "mnc", args.prompt]
+    else:
+        columns = classifier.headers
+
+    for casefile in cases:
+        results = classifier.classify(casefile, test=args.test, one_prompt=args.prompt)
+        worksheet.append([results.get(c, "") for c in columns])
+
+    spreadsheet = config["output"]
+    if args.test:
+        print(f"Writing sample prompts to {spreadsheet}")
+    else:
+        print(f"Writing results to {spreadsheet}")
+    workbook.save(spreadsheet)
+
+
+if __name__ == "__main__":
+    cli()

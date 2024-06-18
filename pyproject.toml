@@ -19,7 +19,7 @@ ipykernel = "^6.29.4"
 pandas = "^2.2.2"
 
 [tool.poetry.scripts]
-classify = "langchainlaw.langchainlaw:classify"
+classify = "langchainlaw.langchainlaw:cli"
 collate = "langchainlaw.collate:collate"
 
 
