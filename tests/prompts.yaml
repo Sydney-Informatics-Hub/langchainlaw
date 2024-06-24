@@ -30,19 +30,20 @@ prompts:
       - representative
     prompt: |
       who is the executor or administrator of the deceased's estate, and
-      who are their legal representation? Return your answer as a JSON object
+      who are their legal representatives? Return your answer as a JSON object
       with the following structure:
          {{
           "name": "John Smith",
-          "representation": "Jane Doe KC"
+          "representative": "Jane Doe KC"
          }} 
 
   - name: parties
     return_type: json_multiple
+    repeats: 2
     fields:
       - name
       - role_in_trial
-      - representatives
+      - legal_representatives
       - costs
       - natural_person
       - relationship_to_deceased

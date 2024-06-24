@@ -30,6 +30,7 @@ class CasePrompt:
     prompt: str
     return_type: str
     fields: list[str] = field(default_factory=list)
+    repeats: int = 1
 
     @property
     def headers(self):
@@ -37,9 +38,25 @@ class CasePrompt:
             return [self.name]
         else:
             if self.return_type == "json_multiple":
-                return [f"{self.name}{{n}}:{f}" for f in self.fields]
+                return [
+                    f"{self.name}{n}:{f}"
+                    for n in range(1, self.repeats + 1)
+                    for f in self.fields
+                ]
             else:
                 return [f"{self.name}:{f}" for f in self.fields]
+
+    def collimate(self, result):
+        """Take a results set for this prompt and return an array of the
+        results as columns. These are then all flattened by the collimate
+        method on the classifier"""
+        if self.fields is None:
+            return [result]
+        else:
+            if self.return_type == "json_multiple":
+                return [single.get(f) for single in result for f in self.fields]
+            else:
+                return [result.get(f) for f in self.fields]
 
     def parse_response(self, response):
         if self.return_type == "text":
@@ -48,11 +65,11 @@ class CasePrompt:
             results = parse_llm_json(response)
             if self.return_type == "json_literal":
                 return json.dumps(results)
-            if self.return_type == "json_multiple":
-                return self.multi_json_to_fields(results)
-            return self.json_to_fields(results)
+            return results
         except Exception as e:
-            return ["error" + str(e)]
+            message = f"error parsing {self.name}: '{response}'' " + str(e)
+            print(message)
+            return [message]
 
     def json_to_fields(self, o):
         return {f"{self.name}:{f}": o.get(f, "") for f in self.fields}
@@ -132,6 +149,7 @@ class CaseChat:
                     p["prompt"],
                     p.get("return_type", "text"),
                     p.get("fields", None),
+                    p.get("repeats", None),
                 )
             valid = True
             for prompt in self.next_prompt():
@@ -151,7 +169,7 @@ class CaseChat:
             print(prompt.return_type)
             print(prompt.fields)
 
-    def add_prompt(self, name, prompt, return_type, fields):
+    def add_prompt(self, name, prompt, return_type, fields, repeats):
         if name in self._prompts:
             raise ValueError(f"Prompt with name {name} already defined")
         self._prompt_names.append(name)
@@ -160,6 +178,7 @@ class CaseChat:
             prompt=prompt,
             return_type=return_type,
             fields=fields,
+            repeats=repeats,
         )
 
     def start_chat(self):

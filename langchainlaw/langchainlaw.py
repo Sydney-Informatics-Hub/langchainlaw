@@ -78,6 +78,18 @@ class Classifier:
             self.cache.write(case_id, prompt.name, response)
         return prompt.parse_response(response)
 
+    def collimate_one(self, name, results):
+        """Collimate one set of results."""
+        return self.prompts.prompt(name).collimate(results)
+
+    def collimate(self, results):
+        """Take the dict of results returned by classify and aligns it
+        with the column headers from the prompts"""
+        cols = [results["file"], results["mnc"]]
+        for name in self.prompts.prompt_names:
+            cols.extend(self.collimate_one(name, results.get(name, None)))
+        return cols
+
     def classify(self, casefile, test=False, one_prompt=None):
         """Run the classifier for a single case and returns the results as a
         dict by prompt label."""
@@ -139,8 +151,11 @@ def cli():
             print(f"No prompt defined with name '{args.prompt}'")
             return
 
-    if not args.prompt:
-        worksheet.append(["file", "mnc"] + classifier.headers)
+    if args.prompt:
+        headers = ["file", "mnc", args.prompt]
+    else:
+        headers = classifier.headers
+    worksheet.append(headers)
 
     if args.case:
         case = Path(config["input"]) / Path(args.case)
@@ -151,19 +166,10 @@ def cli():
     else:
         cases = Path(config["input"]).glob("*.json")
 
-    if args.prompt:
-        columns = ["file", "mnc", args.prompt]
-    else:
-        columns = classifier.headers
-
     for casefile in cases:
         results = classifier.classify(casefile, test=args.test, one_prompt=args.prompt)
-        print(results)
-        col_results = [results.get(c, "") for c in columns]
-        print(columns)
-        print(col_results)
-        # FIXME - the results for multivalue fields are like parties:illegal
-        worksheet.append([results.get(c, "") for c in columns])
+        cols = classifier.collimate(results)
+        worksheet.append(cols)
 
     spreadsheet = config["output"]
     if args.test:
