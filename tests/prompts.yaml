@@ -45,7 +45,7 @@ prompts:
       - representatives
       - costs
       - natural_person
-      - relationship_to_party
+      - relationship_to_deceased
       - is_dependant
       - misconduct
       - estranged

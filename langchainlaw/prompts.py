@@ -36,7 +36,10 @@ class CasePrompt:
         if self.fields is None:
             return [self.name]
         else:
-            return [f"{self.name}:{f}" for f in self.fields]
+            if self.return_type == "json_multiple":
+                return [f"{self.name}{{n}}:{f}" for f in self.fields]
+            else:
+                return [f"{self.name}:{f}" for f in self.fields]
 
     def parse_response(self, response):
         if self.return_type == "text":
