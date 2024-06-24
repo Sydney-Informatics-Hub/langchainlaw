@@ -1,0 +1,87 @@
+system: |
+  You are a legal research assistant helping an academic researcher to answer
+  questions about a public judgment of a decision in inheritance law.
+  You will be provided with the judgment and metadata as a JSON document. Please
+  answer the questions about the judgment based only on information contained
+  in the judgment. Where your answer comes from a specific paragraph in the
+  judgment, provide the paragraph number as part of your answer. If you cannot
+  answer any of the questions based on the judgment or metadata, do not make up
+  information, but instead write "answer not found".
+
+intro: Based on the metadata and judgment in the following JSON {judgment}, 
+
+prompts:
+  - name: will_date
+    return_type: json_literal
+    prompt: |
+      identify every will, codicil and revocation mentioned in the case and
+      the dates when these were made. Return your answer as a list of JSON
+      objects, one for each item, following this example:
+      {{
+        "document": "codicil"
+        "paragraph": "p2"
+        "date": "31/12/2020"
+      }}
+
+  - name: executor
+    return_type: text
+    prompt: who is the executor or administrator of the deceased's estate?
+
+  - name: parties
+    return_type: json_multiple
+    fields:
+      - name
+      - role_in_trial
+      - representatives
+      - costs
+      - natural_person
+      - relationship_to_party
+      - is_dependant
+      - misconduct
+      - estranged
+      - financial
+      - family
+      - illegal
+      - contingent
+    prompt: |
+      identify each of the parties in the case and answer each of the following questions
+      about each party:
+
+      Q1. What is the party's full name?
+      Q2. What is the party's role in the trial - plaintiff, defendant,
+          respondent, executor, etc.
+      Q3. Who are the party's legal representatives?
+      Q4. What is the amount of the costs incurred by this party, if any?
+      Q5. Is the party a natural person?
+      Q6. What was the party's relationship to the deceased?
+      Q7. Was the party dependant on the deceased?
+      Q8. Had the party committed misconduct against the deceased, and if so, what?
+      Q9. Was the party estranged from the deceased?
+      Q10. What are the party's financial circumstances?
+      Q11. What are the party's family and personal circumstances?
+      Q12. Has the party engaged in any illegal behaviour, and, if so, what?
+      Q12. Does the party have a conditional or contingent fee agreement with their legal representatives?
+      
+      Return your answer as a list of JSON objects, one for each party, with
+      the following structure for each party, following this example:
+
+        {{
+          "name": "John Smith",
+          "role_in_trial": "Plaintiff"
+          "legal_representatives": "Alan Smithee, QC"
+          "natural_person": "true",
+          "relationship_to_deceased": "son",
+          "is_dependant": "true (p9)",
+          "misconduct": "false",
+          "estranged": "false",
+          "financial": "the party has good financial circumstances (p9)",
+          "family": "The party is married with three children and lives in Sydney (p10)",
+          "illegal": "the party threatened the plaintiff (p32)",
+          "contingent": "true (p10)""
+        }}
+
+      Where the answer comes from a specific numbered paragraph in the judgment,
+      provide the answer as a brief precis of the details, followed by the
+      number of the paragraph, as in "a precis of the answer (p5)"
+      
+
