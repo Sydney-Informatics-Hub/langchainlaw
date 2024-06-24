@@ -24,10 +24,6 @@ class PromptException(Exception):
     pass
 
 
-# todo: this would be better as subclasses for the json ones, or make em all
-# json
-
-
 @dataclass
 class CasePrompt:
     name: str

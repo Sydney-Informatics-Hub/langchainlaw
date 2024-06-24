@@ -24,8 +24,18 @@ prompts:
       }}
 
   - name: executor
-    return_type: text
-    prompt: who is the executor or administrator of the deceased's estate?
+    return_type: json
+    fields:
+      - name
+      - representative
+    prompt: |
+      who is the executor or administrator of the deceased's estate, and
+      who are their legal representation? Return your answer as a JSON object
+      with the following structure:
+         {{
+          "name": "John Smith",
+          "representation": "Jane Doe KC"
+         }} 
 
   - name: parties
     return_type: json_multiple
