@@ -63,7 +63,10 @@ class Classifier:
         message = self.prompts.message(prompt)
         try:
             if self.test:
-                response = prompt.mock_response()
+                if self.cache:
+                    response = self.cache.read(case_id, prompt.name)
+                if not response:
+                    response = prompt.mock_response()
             else:
                 if self.cache:
                     response = self.cache.read(case_id, prompt.name)
@@ -74,7 +77,7 @@ class Classifier:
             if self.cache:
                 self.cache.write(case_id, prompt.name, str(e))  # FIXME
             return prompt.wrap_error(str(e))
-        if self.cache:
+        if self.cache and not self.test:
             self.cache.write(case_id, prompt.name, response)
         return prompt.parse_response(response)
 
@@ -89,6 +92,14 @@ class Classifier:
         for name in self.prompts.prompt_names:
             cols.extend(self.collimate_one(name, results.get(name, None)))
         return cols
+
+    def flatten(self, results):
+        d = {}
+        for name in self.prompts.prompt_names:
+            r = self.prompt.flatten(results[name])
+            for k, v in r:
+                d[k] = v
+        return d
 
     def classify(self, casefile, test=False, one_prompt=None):
         """Run the classifier for a single case and returns the results as a

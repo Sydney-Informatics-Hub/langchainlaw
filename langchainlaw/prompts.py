@@ -48,15 +48,26 @@ class CasePrompt:
 
     def collimate(self, result):
         """Take a results set for this prompt and return an array of the
-        results as columns. These are then all flattened by the collimate
-        method on the classifier"""
+        results as columns."""
         if self.fields is None:
             return [result]
-        else:
-            if self.return_type == "json_multiple":
-                return [single.get(f) for single in result for f in self.fields]
-            else:
-                return [result.get(f) for f in self.fields]
+        if self.return_type == "json_multiple":
+            return [single.get(f) for single in result for f in self.fields]
+        return [result.get(f) for f in self.fields]
+
+    def flatten(self, result):
+        """Take a results set for this prompt and return a dict by either
+        name, name:field or name:n:field depending on whether the return type
+        is str / single json / multiple json"""
+        if self.fields is None:
+            return {self.name: result}
+        if self.return_type == "json_multiple":
+            return {
+                f"{self.name}:{n + 1}:{f}": result[n].get(f)
+                for n in range(len(result))
+                for f in self.fields
+            }
+        return {f"{self.name}:{f}": result.get(f) for f in self.fields}
 
     def parse_response(self, response):
         if self.return_type == "text":
