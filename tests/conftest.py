@@ -63,9 +63,11 @@ def headers():
 @pytest.fixture
 def results():
     return {
+        "file": "tests/input/123456789abcdef0.json",
+        "mnc": "This is a dummy case to feed to the classifier for tests",
         "will_date": (
-            """[{"document": "will","paragraph": "1", "date": "19/12/2006"},"""
-            """{"document": "will", "paragraph": "13","date": "7/3/2010" } ]"""
+            """[{"document": "will", "paragraph": "1", "date": "19/12/2006"}, """
+            """{"document": "will", "paragraph": "13", "date": "7/3/2010"}]"""
         ),
         "executor": {
             "name": "Joe Executor",
@@ -81,12 +83,10 @@ def results():
                 "is_dependant": "false",
                 "misconduct": "false",
                 "estranged": "false",
-                "financial": """
-The plaintiff has an income of $90,000 per annum and no assets
-""",
-                "family": """
-The plaintiff has three dependant children and is single
-""",
+                "financial": (
+                    "The plaintiff has an income of $90,000 per annum and " "no assets"
+                ),
+                "family": ("The plaintiff has three dependant children and is single"),
                 "illegal": "false",
                 "contingent": "not specified",
             },
@@ -99,12 +99,14 @@ The plaintiff has three dependant children and is single
                 "is_dependant": "false",
                 "misconduct": "false",
                 "estranged": "false",
-                "financial": """
-The party's financial circumstances are not detailed in the judgment
-""",
-                "family": """
-The party's family and personal circumstances are not detailed in the judgment
-""",
+                "financial": (
+                    "The party's financial circumstances "
+                    "are not detailed in the judgment"
+                ),
+                "family": (
+                    "The party's family and personal circumstances "
+                    "are not detailed in the judgment"
+                ),
                 "illegal": "false",
                 "contingent": "not specified",
             },
@@ -115,9 +117,11 @@ The party's family and personal circumstances are not detailed in the judgment
 @pytest.fixture
 def flat_results():
     return {
+        "file": "tests/input/123456789abcdef0.json",
+        "mnc": "This is a dummy case to feed to the classifier for tests",
         "will_date": (
-            """[{"document": "will","paragraph": "1", "date": "19/12/2006"},"""
-            """{"document": "will", "paragraph": "13","date": "7/3/2010" } ]"""
+            """[{"document": "will", "paragraph": "1", "date": "19/12/2006"}, """
+            """{"document": "will", "paragraph": "13", "date": "7/3/2010"}]"""
         ),
         "executor:name": "Joe Executor",
         "executor:representative": "L Hutz",
@@ -129,12 +133,12 @@ def flat_results():
         "parties:1:is_dependant": "false",
         "parties:1:misconduct": "false",
         "parties:1:estranged": "false",
-        "parties:1:financial": """
-The plaintiff has an income of $90,000 per annum and no assets
-""",
-        "parties:1:family": """
-        "The plaintiff has three dependant children and is single
-""",
+        "parties:1:financial": (
+            "The plaintiff has an income of $90,000 per annum and no assets"
+        ),
+        "parties:1:family": (
+            "The plaintiff has three dependant children and is single"
+        ),
         "parties:1:illegal": "false",
         "parties:1:contingent": "not specified",
         "parties:2:name": "Jane Doe",
@@ -145,12 +149,13 @@ The plaintiff has an income of $90,000 per annum and no assets
         "parties:2:is_dependant": "false",
         "parties:2:misconduct": "false",
         "parties:2:estranged": "false",
-        "parties:2:financial": """
-The party's financial circumstances are not detailed in the judgment
-""",
-        "parties:2:family": """
-The party's family and personal circumstances are not detailed in the judgment
-""",
+        "parties:2:financial": (
+            "The party's financial circumstances " "are not detailed in the judgment"
+        ),
+        "parties:2:family": (
+            "The party's family and personal circumstances "
+            "are not detailed in the judgment"
+        ),
         "parties:2:illegal": "false",
         "parties:2:contingent": "not specified",
     }

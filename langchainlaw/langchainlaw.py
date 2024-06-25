@@ -96,8 +96,8 @@ class Classifier:
     def flatten(self, results):
         d = {}
         for name in self.prompts.prompt_names:
-            r = self.prompt.flatten(results[name])
-            for k, v in r:
+            r = self.prompts.prompt(name).flatten(results[name])
+            for k, v in r.items():
                 d[k] = v
         return d
 
