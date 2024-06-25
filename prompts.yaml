@@ -164,7 +164,7 @@ prompts:
       Q10. What are the party's financial circumstances?
       Q11. What are the party's family and personal circumstances?
       Q12. Has the party engaged in any illegal behaviour, and, if so, what?
-      Q12. Does the party have a conditional or contingent fee agreement with their legal representatives?
+      Q13. Does the party have a conditional or contingent fee agreement with their legal representatives?
       
       Return your answer as a list of JSON objects, one for each party, with
       the following structure for each party, following this example:
@@ -173,6 +173,7 @@ prompts:
           "name": "John Smith",
           "role_in_trial": "Plaintiff"
           "legal_representatives": "Alan Smithee, QC"
+          "costs": "$20,000 (p11)",
           "natural_person": "true",
           "relationship_to_deceased": "son",
           "is_dependant": "true (p9)",
