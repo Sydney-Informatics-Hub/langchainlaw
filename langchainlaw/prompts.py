@@ -71,7 +71,7 @@ class CasePrompt:
 
     def parse_response(self, response):
         if self.return_type == "text":
-            return {self.name: response}
+            return response
         try:
             results = parse_llm_json(response)
             if self.return_type == "json_literal":
@@ -80,7 +80,7 @@ class CasePrompt:
         except Exception as e:
             message = f"error parsing {self.name}: '{response}'' " + str(e)
             print(message)
-            return [message]
+            return message
 
     def json_to_fields(self, o):
         return {f"{self.name}:{f}": o.get(f, "") for f in self.fields}
@@ -102,10 +102,12 @@ class CasePrompt:
             return cols
 
     def mock_response(self):
-        # Note: a future version could merge this with the JSON for the prompt
-        if self.return_type == "text":
-            return "Response"
-        o = {f: "value" for f in self.fields}
+        """returns string literals for JSON fields so that they can be parsed"""
+        if self.fields is None:
+            return "plaintext value"
+        o = {f: "JSON value" for f in self.fields}
+        if self.return_type == "json_literal":
+            return json.dumps(o)
         if self.return_type == "json_multiple":
             return json.dumps([o])
         return json.dumps(o)
@@ -160,7 +162,7 @@ class CaseChat:
                     p["prompt"],
                     p.get("return_type", "text"),
                     p.get("fields", None),
-                    p.get("repeats", None),
+                    p.get("repeats", 1),
                 )
             valid = True
             for prompt in self.next_prompt():
