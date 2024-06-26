@@ -1,0 +1,34 @@
+```json
+[
+  {
+    "name": "John Smith",
+    "role_in_trial": "Plaintiff",
+    "legal_representatives": "R Bebbe",
+    "costs": "Costs of the Notice of Motion to be the Plaintiff's costs in the cause (p35)",
+    "natural_person": "true",
+    "relationship_to_deceased": "son",
+    "is_dependant": "false",
+    "misconduct": "false",
+    "estranged": "false",
+    "financial": "The plaintiff has an income of $90,000 per annum and no assets",
+    "family": "The plaintiff has three dependant children and is single",
+    "illegal": "false",
+    "contingent": "not specified"
+  },
+  {
+    "name": "Jane Doe",
+    "role_in_trial": "Defendant",
+    "legal_representatives": "M Mouse",
+    "costs": "none",
+    "natural_person": "true",
+    "relationship_to_deceased": "wife",
+    "is_dependant": "false",
+    "misconduct": "false",
+    "estranged": "false",
+    "financial": "The party's financial circumstances are not detailed in the judgment",
+    "family": "The party's family and personal circumstances are not detailed in the judgment",
+    "illegal": "false",
+    "contingent": "not specified"
+  }
+]
+```

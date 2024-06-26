@@ -1,0 +1,5 @@
+{
+  "title": "Dummy",
+  "uri": "/decision/1234556789abcdef0",
+  "mnc": "This is a dummy case to feed to the classifier for tests"
+}

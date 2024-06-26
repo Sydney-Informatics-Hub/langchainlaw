@@ -1,18 +1,27 @@
 from dataclasses import dataclass, field
 import yaml
 import json
-import sys
-import traceback
+import re
 
 from langchain.schema import HumanMessage, SystemMessage
+
+JSON_QUOTE_RE = re.compile("```json(.*)```")
+
+
+def parse_llm_json(llm_json):
+    """Deals with some of the models wrapping JSON in ```json ``` markup
+    Raises a JSON decode error."""
+    llm_oneline = llm_json.replace("\n", "")
+    match = JSON_QUOTE_RE.search(llm_oneline)
+    if match:
+        json_raw = match.group(1)
+        return json.loads(json_raw)
+    else:
+        return json.loads(llm_json)
 
 
 class PromptException(Exception):
     pass
-
-
-# todo: this would be better as subclasses for the json ones, or make em all
-# json
 
 
 @dataclass
@@ -21,32 +30,68 @@ class CasePrompt:
     prompt: str
     return_type: str
     fields: list[str] = field(default_factory=list)
+    repeats: int = 1
 
     @property
     def headers(self):
-        if not self.return_type == "text":
-            return [f"{self.name}:{f}" for f in self.fields]
-        else:
+        if self.fields is None:
             return [self.name]
+        else:
+            if self.return_type == "json_multiple":
+                return [
+                    f"{self.name}{n}:{f}"
+                    for n in range(1, self.repeats + 1)
+                    for f in self.fields
+                ]
+            else:
+                return [f"{self.name}:{f}" for f in self.fields]
+
+    def collimate(self, result):
+        """Take a results set for this prompt and return an array of the
+        results as columns."""
+        if self.fields is None:
+            return [result]
+        if self.return_type == "json_multiple":
+            return [single.get(f) for single in result for f in self.fields]
+        return [result.get(f) for f in self.fields]
+
+    def flatten(self, result):
+        """Take a results set for this prompt and return a dict by either
+        name, name:field or name:n:field depending on whether the return type
+        is str / single json / multiple json"""
+        if self.fields is None:
+            return {self.name: result}
+        if self.return_type == "json_multiple":
+            return {
+                f"{self.name}:{n + 1}:{f}": result[n].get(f)
+                for n in range(len(result))
+                for f in self.fields
+            }
+        return {f"{self.name}:{f}": result.get(f) for f in self.fields}
 
     def parse_response(self, response):
         if self.return_type == "text":
-            return [response]
+            return {self.name: response}
         try:
-            decoded = json.loads(response)
-            if self.return_type == "json_multiple":
-                # unpack and flatten
-                unpacked = [self.unpack_object(o) for o in decoded]
-                columns = [column for item in unpacked for column in item]
-            else:
-                columns = self.unpack_object(decoded)
-            return columns
+            results = parse_llm_json(response)
+            if self.return_type == "json_literal":
+                return json.dumps(results)
+            return results
         except Exception as e:
-            traceback.print_exc(file=sys.stderr)
-            return self.wrap_error(str(e))
+            message = f"error parsing {self.name}: '{response}'' " + str(e)
+            print(message)
+            return [message]
 
-    def unpack_object(self, o):
-        return [o.get(f, "") for f in self.fields]
+    def json_to_fields(self, o):
+        return {f"{self.name}:{f}": o.get(f, "") for f in self.fields}
+
+    def multi_json_to_fields(self, results):
+        """returns a dict with keys like 'parties0:name' for multivalue fields"""
+        return {
+            f"{self.name}{i}:{f}": results[i].get(f, "")
+            for i in range(len(results))
+            for f in self.fields
+        }
 
     def wrap_error(self, msg):
         if self.return_type == "text":
@@ -115,6 +160,7 @@ class CaseChat:
                     p["prompt"],
                     p.get("return_type", "text"),
                     p.get("fields", None),
+                    p.get("repeats", None),
                 )
             valid = True
             for prompt in self.next_prompt():
@@ -134,7 +180,7 @@ class CaseChat:
             print(prompt.return_type)
             print(prompt.fields)
 
-    def add_prompt(self, name, prompt, return_type, fields):
+    def add_prompt(self, name, prompt, return_type, fields, repeats):
         if name in self._prompts:
             raise ValueError(f"Prompt with name {name} already defined")
         self._prompt_names.append(name)
@@ -143,6 +189,7 @@ class CaseChat:
             prompt=prompt,
             return_type=return_type,
             fields=fields,
+            repeats=repeats,
         )
 
     def start_chat(self):

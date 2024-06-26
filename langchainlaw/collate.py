@@ -7,6 +7,7 @@ from openpyxl import load_workbook, Workbook
 import re
 
 from langchainlaw.cache import Cache
+from langchainlaw.prompts import parse_llm_json
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -14,8 +15,6 @@ logger.setLevel(logging.INFO)
 URI_RE = re.compile("https://www.caselaw.nsw.gov.au/decision/([0-9a-f]+)")
 
 MAX_RE = re.compile("context length")
-
-JSON_QUOTE_RE = re.compile("```json(.*)```")
 
 DEFENDANT_RE = re.compile("defendant", flags=re.I)
 
@@ -151,23 +150,6 @@ def guess_party(llm_party):
         return "defendant"
     else:
         return "claimant"
-
-
-def parse_llm_json(llm_json):
-    """Deals with some of the models wrapping JSON in ```json ``` markup"""
-    llm_oneline = llm_json.replace("\n", "")
-    match = JSON_QUOTE_RE.search(llm_oneline)
-    if match:
-        json_raw = match.group(1)
-        try:
-            return json.loads(json_raw)
-        except json.decoder.JSONDecodeError as e:
-            logger.error(f"JSON parse error {e}")
-            logger.error(llm_oneline)
-            return None
-    else:
-        logger.error(f"Couldn't match against json quotes from \n${llm_oneline}")
-        return None
 
 
 def get_from_party(party, field):

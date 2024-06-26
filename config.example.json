@@ -1,7 +1,16 @@
 {
-    "OPENAI_API_KEY": "SECRET_GOES_HERE",
-    "OPENAI_ORGANIZATION": "org-ORG_KEY_GOES_HERE",
-    "TEMPERATURE": 0.1,
-    "JUDGMENTS": "./json",
-    "PROMPTS": "./data/prompts.yaml"
+    "providers": {
+        "OpenAI": {
+            "api_key": "SECRET_GOES_HERE",
+            "organization": "ORG_KEY_GOES_HERE",
+            "model": "gpt-4o"
+        }
+    },
+    "provider": "OpenAI",
+    "temperature": 0,
+    "rate_limit": 15,
+    "input": "./input/",
+    "output": "./output/results.xlsx",
+    "cache": "./output/cache",
+    "prompts": "./prompts.yaml"
 }

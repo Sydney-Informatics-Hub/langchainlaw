@@ -1,0 +1,16 @@
+{
+    "providers": {
+        "openai": {
+            "api_key": "SECRET_GOES_HERE",
+            "organization": "ORG_KEY_GOES_HERE",
+            "model": "gpt-4o"
+        }
+    },
+    "provider": "openai",
+    "temperature": 0,
+    "rate_limit": 60,
+    "input": "tests/input/",
+    "output": "tests/output/results.xlsx",
+    "cache": "tests/output/cache",
+    "prompts": "tests/prompts.yaml"
+}
