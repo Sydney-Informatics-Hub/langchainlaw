@@ -78,6 +78,10 @@ def results():
                 "name": "John Smith",
                 "role_in_trial": "Plaintiff",
                 "legal_representatives": "R Bebbe",
+                "costs": (
+                    "Costs of the Notice of Motion to be the Plaintiff's "
+                    "costs in the cause (p35)"
+                ),
                 "natural_person": "true",
                 "relationship_to_deceased": "son",
                 "is_dependant": "false",
@@ -94,6 +98,7 @@ def results():
                 "name": "Jane Doe",
                 "role_in_trial": "Defendant",
                 "legal_representatives": "M Mouse",
+                "costs": "none",
                 "natural_person": "true",
                 "relationship_to_deceased": "wife",
                 "is_dependant": "false",
@@ -128,6 +133,10 @@ def flat_results():
         "parties:1:name": "John Smith",
         "parties:1:role_in_trial": "Plaintiff",
         "parties:1:legal_representatives": "R Bebbe",
+        "parties:1:costs": (
+            "Costs of the Notice of Motion to be the Plaintiff's "
+            "costs in the cause (p35)"
+        ),
         "parties:1:natural_person": "true",
         "parties:1:relationship_to_deceased": "son",
         "parties:1:is_dependant": "false",
@@ -144,6 +153,7 @@ def flat_results():
         "parties:2:name": "Jane Doe",
         "parties:2:role_in_trial": "Defendant",
         "parties:2:legal_representatives": "M Mouse",
+        "parties:2:costs": "none",
         "parties:2:natural_person": "true",
         "parties:2:relationship_to_deceased": "wife",
         "parties:2:is_dependant": "false",

@@ -94,7 +94,7 @@ class Classifier:
         return cols
 
     def flatten(self, results):
-        d = {}
+        d = {"file": results["file"], "mnc": results["mnc"]}
         for name in self.prompts.prompt_names:
             r = self.prompts.prompt(name).flatten(results[name])
             for k, v in r.items():
