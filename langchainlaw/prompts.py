@@ -52,7 +52,11 @@ class CasePrompt:
         if self.fields is None:
             return [result]
         if self.return_type == "json_multiple":
+            if result is None:
+                return ["" for _ in self.fields]
             return [single.get(f) for single in result for f in self.fields]
+        if result is None:
+            return ["" for _ in self.fields]
         return [result.get(f) for f in self.fields]
 
     def flatten(self, result):
