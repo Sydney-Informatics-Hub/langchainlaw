@@ -115,7 +115,7 @@ class Classifier:
                 d[k] = v
         return d
 
-    def classify(self, casefile, test=False, one_prompt=None, quiet=False):
+    def classify(self, casefile, test=False, one_prompt=None):
         """Run the classifier for a single case and returns the results as a
         dict by prompt label."""
         self.test = test
@@ -123,8 +123,6 @@ class Classifier:
         self.prompts.judgment = self.load_case(casefile)
         results = {"file": str(casefile), "mnc": self.prompts.judgment["mnc"]}
 
-        if not quiet:
-            print(f"[{case_id}] Classifying...")
         system_prompt = self.prompts.start_chat()
 
         if not self.test:
@@ -132,8 +130,6 @@ class Classifier:
 
         for prompt in self.prompts.next_prompt():
             if not one_prompt or prompt.name == one_prompt:
-                if not quiet:
-                    print(f"[{case_id}] {prompt.name}")
                 results[prompt.name] = self.run_prompt(case_id, prompt)
         return results
 
