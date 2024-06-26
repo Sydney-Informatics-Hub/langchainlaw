@@ -193,9 +193,7 @@ def cli():
 
     for casefile in cases:
         results = classifier.classify(casefile, test=args.test, one_prompt=args.prompt)
-        print(results)
         cols = classifier.as_columns(results)
-        print(cols)
         worksheet.append(cols)
 
     spreadsheet = config["output"]
