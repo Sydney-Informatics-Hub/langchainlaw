@@ -147,6 +147,7 @@ prompts:
       - family
       - illegal
       - contingent
+    repeats: 6
     prompt: |
       identify each of the parties in the case and answer each of the following questions
       about each party:
