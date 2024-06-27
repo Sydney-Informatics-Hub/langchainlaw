@@ -15,9 +15,9 @@ Get a copy of the repo using `git clone` and then set up your Python environment
 and dependencies with `poetry install`:
 
 ```
-	> git clone git@github.com:Sydney-Informatics-Hub/langchainlaw.git
-	> cd langchainlaw
-	> poetry install
+git clone git@github.com:Sydney-Informatics-Hub/langchainlaw.git
+cd langchainlaw
+poetry install
 ```
 
 ## Command Line
@@ -28,22 +28,22 @@ caching the LLM responses and writing the results out to a spreadsheet. It
 is configured using a JSON file with the following format:
 
 ```
-	{
-	    "providers": {
-	        "OpenAI": {
-	            "api_key": "SECRET_GOES_HERE",
-	            "organization": "ORG_KEY_GOES_HERE",
-	            "model": "gpt-4o"
-	        }
-	    },
-	    "provider": "OpenAI",
-	    "temperature": 0,
-	    "rate_limit": 15,
-	    "input": "./input/",
-	    "output": "./output/results.xlsx",
-	    "cache": "./output/cache",
-	    "prompts": "./prompts.yaml"
-	}
+{
+    "providers": {
+        "OpenAI": {
+            "api_key": "SECRET_GOES_HERE",
+            "organization": "ORG_KEY_GOES_HERE",
+            "model": "gpt-4o"
+        }
+    },
+    "provider": "OpenAI",
+    "temperature": 0,
+    "rate_limit": 15,
+    "input": "./input/",
+    "output": "./output/results.xlsx",
+    "cache": "./output/cache",
+    "prompts": "./prompts.yaml"
+}
 ```
 
 You should make a copy of `config.example.json` as `config.json` before you
@@ -59,15 +59,13 @@ follows:
 The prompts.yaml file contains the prompts used to ask the LLM to answer
 questions about the judgment.  This repository contains two prompts files:
 
-```
-	prompts.yaml - inefficient, sends a request for each question
-	prompts_grouped.yaml - groups the questions into 7 requests
-```
+* `prompts.yaml`: inefficient, sends a request for each question
+* `prompts_grouped.yaml`: groups the questions into 7 requests
 
 To run the `classify` command, use `poetry run`:
 
 ```
-    > poetry run classify --config config.json
+poetry run classify --config config.json
 ```
 
 If you re-run the classifier, it will look in the cache for each case / prompt combination and return a cached result if it exists, rather than going to the LLM. For now, the only way to stop caching is to delete the cache file or directory for a prompt or case.
@@ -76,35 +74,36 @@ GPT-4o sometimes adds 'notes' to its output even when instructed to return JSON 
 
 ## API
 
+You can use the Classifier object in your own Python scripts or notebooks:
 
 ```
-	from langchainlaw.langchainlaw import Classifier
-	from pandas import DataFrame
-	from pathlib import Path
-	import json
+from langchainlaw.langchainlaw import Classifier
+from pandas import DataFrame
+from pathlib import Path
+import json
 
-	with open("config.json", "r") as cfh:
-		config = json.load(cfh)
+with open("config.json", "r") as cfh:
+	config = json.load(cfh)
 
-	classifier = Classifier(config)
+classifier = Classifier(config)
 
-	# classify a single case
+# classify a single case
 
-	output = classifier.classify("cases/123456789abcdef0.json")
+output = classifier.classify("cases/123456789abcdef0.json")
 
-	# iterate over a directory and build a dataframe
+# iterate over a directory and build a dataframe
 
-	results = []
-	for casefile in Path("cases").glob("*.json"):
-		output = classifier.classify(casefile)
-		results.append(classifier.as_dict(output))
-	df = DataFrame(results)
+results = []
+for casefile in Path("cases").glob("*.json"):
+	output = classifier.classify(casefile)
+	results.append(classifier.as_dict(output))
+df = DataFrame(results)
 ```
 
 See the [sample notebook](notebook.ipynb) for an example of using langchainlaw from a Jupyter notebook. To run this notebook locally use the following poetry command:
 
 ```
-	> poetry run jupyter notebook notebook.ipynb
+poetry run jupyter notebook notebook.ipynb
 ```
 
 The notebook assumes that you have a `config.json` file with your OpenAI
@@ -168,13 +167,13 @@ Where prompts have a `return_type` of `json_multiple`, the results will be
 written to the spreadsheet one set of columns at a time, with headers as follows:
 
 ```
-    parties:1:name
-    parties:1:role_in_trial
-    parties:1:representatives
-    [...]
-    parties:2:name
-    parties:2:role_in_trial
-    parties:2:representatives
+parties:1:name
+parties:1:role_in_trial
+parties:1:representatives
+[...]
+parties:2:name
+parties:2:role_in_trial
+parties:2:representatives
 ```
 
 The maximum number of sets of headers written to the spreadsheet is controlled
