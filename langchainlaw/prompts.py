@@ -49,6 +49,8 @@ class CasePrompt:
     def collimate(self, result):
         """Take a results set for this prompt and return an array of the
         results as columns."""
+        print(f"collimate {self.name} {self.return_type}")
+        print(result)
         if self.fields is None:
             return [result]
         if self.return_type == "json_multiple":
@@ -74,12 +76,24 @@ class CasePrompt:
         return {f"{self.name}:{f}": result.get(f) for f in self.fields}
 
     def parse_response(self, response):
+        """Parses the string returned by the LLM, and also does some basic
+        checking that the return types matched what the prompt expected"""
         if self.return_type == "text":
             return response
         try:
             results = parse_llm_json(response)
             if self.return_type == "json_literal":
                 return json.dumps(results)
+            if self.return_type == "json":
+                if type(results) is not dict:
+                    print(
+                        f"[warning] prompt {self.name}" " didn't return a JSON object"
+                    )
+                    print("returned type: " + str(type(results)))
+            if self.return_type == "json_multiple":
+                if type(results) is not list:
+                    print(f"[warning] prompt {self.name}" " didn't return a JSON array")
+                    print("returned type: " + str(type(results)))
             return results
         except Exception as e:
             message = f"error parsing {self.name}: '{response}'' " + str(e)

@@ -144,7 +144,7 @@ prompts:
     prompt: |
       answer the following questions about the deceased's estate:
 
-      Q1: list all of the assets which make up the deceased's estate
+      Q1: what are all of the assets which make up the deceased's estate?
       Q2: what is the monetary value of the estate, if stated?
       Q3: is the family or matrimonial home in dispute?
       Q4: did the court designate any property as notional estate?
