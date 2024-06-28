@@ -1,4 +1,4 @@
-from langchainlaw.langchainlaw import Classifier
+from langchainlaw.classifier import Classifier
 import json
 from pathlib import Path
 
