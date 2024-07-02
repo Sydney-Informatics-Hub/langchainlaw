@@ -7,7 +7,7 @@ def files():
 
 
 @pytest.fixture
-def variants_of_json():
+def llm_json():
     return [
         {"string": '[ { "key": "value" }]', "json": [{"key": "value"}]},
         {
@@ -21,6 +21,20 @@ def variants_of_json():
             "json": {"here is some stuff": "hope you like it"},
         },
     ]
+
+
+@pytest.fixture
+def executor():
+    return {
+        "correct": {
+            "response": '{ "name": "foo", "representative": "bar" }',
+            "expect": {"name": "foo", "representative": "bar"},
+        },
+        "list": {
+            "response": '[ { "name": "foo", "representative": "bar" } ]',
+            "expect": {"name": "foo", "representative": "bar"},
+        },
+    }
 
 
 @pytest.fixture
