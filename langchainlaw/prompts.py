@@ -86,10 +86,13 @@ class CasePrompt:
                 return json.dumps(results)
             if self.return_type == "json":
                 if type(results) is not dict:
-                    print(
-                        f"[warning] prompt {self.name}" " didn't return a JSON object"
-                    )
-                    print("returned type: " + str(type(results)))
+                    if type(results) is list:
+                        print(
+                            f"[warning] prompt {self.name}"
+                            " returned a list but is not json_multiple"
+                        )
+                        return results[0]
+                    return results
             if self.return_type == "json_multiple":
                 if type(results) is not list:
                     print(f"[warning] prompt {self.name}" " didn't return a JSON array")
