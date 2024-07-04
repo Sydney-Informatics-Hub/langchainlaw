@@ -4,6 +4,8 @@ import pandas as pd
 from collections import defaultdict
 import random
 
+random.seed(42)
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Convert XLSX prompts to YAML")
