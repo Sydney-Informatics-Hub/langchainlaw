@@ -1,0 +1,37 @@
+﻿Prompt_name,return_type,Repeats,fields,question_number,question_description,Example
+dates,json,,filing_date,1,What is the filing date? DD/MM/YYYY,5/6/2010
+dates,,,interlocutory,2,"Does this judgment concern an interlocutory applicatidoes this judgment concern an interlocutory application? Answer ""yes"", ""no"" or ""unclear"" on?",yes
+dates,,,interlocutory_date,3,"If the judgment concerns an interlocutory application, what was the date of the application?  DD/MM/YYYY",4/3/2010
+deceased,json,,name,1,what was the deceased's name?,Susan Miller
+deceased,,,date_of_death,2,when did the deceased die? DD/MM/YYYY,2/5/2008
+deceased,,,misconduct,3,"had the deceased committed misconduct against any of the parties to the case? Reply with ""alleged"", ""found"" or ""neither"", and provide a citation of the paragraphs or paragraph where the misconduct is described.","alleged, p8"
+wills,json,,wills,1,"identify every will, codicil and revocation mentioned in the case and the dates when these were made","5/6/1998 (will, p2); 3/4/2002 (will, p3); 5/10/2009 (codicil, p5)"
+wills,,,executor,2,who is the executor or administrator of the deceased's estate?,John Jones
+wills,,,executor_representatives,3,"who is are the legal representatives, if any, of the executor or adminstrator?",D Duck
+legislation,json,,acts,1,what sections of the Succession Act or Family Provision Act are mentioned?,"Family Provision Act 1982: 1. S6. Definition of ""eligible person""; 2. S7 Provision for maintenance, education, or advancement in life; 3. S9 Provisions affecting the Court's powers under sections 7 and 8."
+legislation,,,other_claims,2,"what other claims did the plaintiff argue, aside from the Succession Act? For example, presumed undue influence, actual undue influence, incapacity",The plaintiff argued claims under the Property (Relationships) Act 1984.
+outcome,json,,successful,1,"were the plaintiff's claims successful? Answer ""yes"" or ""no""",
+outcome,,,provision_awarded,2,what provision did the court award?,
+outcome,,,costs_disputed,3,"did the parties have a dispute about their costs? Answer ""yes"", ""no"" or ""unclear""",
+outcome,,,costs_disputed_amount,4,"what was the amount of costs in the dispute, if any?",
+outcome,,,costs_liable,5,which party or parties were liable for costs?,
+outcome,,,mediation,6,did the parties participate in mediation or any other alternative dispute resolution? ,
+outcome,,,mediation_date,7,"if the parties participated in mediation or alternative dispute resolution, on what date did this take place? DD/MM/YYYY or n/a",
+estate,json,,assets,1,what are all of the assets which make up the deceased's estate?,
+estate,,,value,2,"what is the monetary value of the estate, if stated?",
+estate,,,family_home,3,is the family or matrimonial home in dispute?,
+estate,,,notional,4,did the court designate any property as notional estate?,
+estate,,,distribution,5,how is the deceased's estate distributed according to the last will or intestacy rules?,
+parties,json_multiple,6,name,1,What is the party's full name?,John Smith
+parties,,,role_in_trial,2,"What is the party's role in the trial - plaintiff, defendant, respondent, executor, etc.",Plaintiff
+parties,,,representatives,3,Who are the party's legal representatives?,"Alan Smithee, QC"
+parties,,,costs,4,"What is the amount of the costs incurred by this party, if any?",etc…
+parties,,,natural_person,5,Is the party a natural person?,
+parties,,,relationship_to_deceased,6,What was the party's relationship to the deceased?,
+parties,,,is_dependant,7,Was the party dependant on the deceased?,
+parties,,,misconduct,8,"Had the party committed misconduct against the deceased, and if so, what?",
+parties,,,estranged,9,Was the party estranged from the deceased?,
+parties,,,financial,10,What are the party's financial circumstances?,
+parties,,,family,11,What are the party's family and personal circumstances?,
+parties,,,illegal,12,"Has the party engaged in any illegal behaviour, and, if so, what?",
+parties,,,contingent,13,Does the party have a conditional or contingent fee agreement with their legal representatives?,
