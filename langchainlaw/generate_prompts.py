@@ -30,9 +30,10 @@ intro: {intro_string}
 
 
 def process_prompts(input_file):
-    prompts = pd.read_excel(input_file, sheet_name="sample_prompts", dtype=str)
-    # fill na with empty string
-    prompts = prompts.fillna("")
+    prompts = pd.read_excel(input_file, sheet_name="sample_prompts", dtype=str).fillna(
+        ""
+    )
+
     prompt_responses = defaultdict(
         lambda: {
             "fields": defaultdict(dict),
@@ -43,35 +44,29 @@ def process_prompts(input_file):
             "additional_instruction": "",
         }
     )
-    # for each row in the prompts sheet, extract the prompt and the response
 
-    for i, row in prompts.iterrows():
+    for _, row in prompts.iterrows():
+        prompt = prompt_responses[row["Prompt_name"]]
+
         if row["return_type"]:
-            prompt_responses[row["Prompt_name"]]["return_type"] = row["return_type"]
-        if row["repeats"]:
-            prompt_responses[row["Prompt_name"]]["repeats"] = row["repeats"]
-        if row["prompt_question"]:
-            prompt_responses[row["Prompt_name"]]["prompt_question"] = row[
-                "prompt_question"
-            ]
-        if row["return_instruction"]:
-            prompt_responses[row["Prompt_name"]]["return_instruction"] = row[
-                "return_instruction"
-            ]
-        if row["additional_instruction"]:
-            prompt_responses[row["Prompt_name"]]["additional_instruction"] = row[
-                "additional_instruction"
-            ]
+            prompt.update(
+                {
+                    "return_type": row["return_type"],
+                    "repeats": row["repeats"],
+                    "prompt_question": row["prompt_question"],
+                    "return_instruction": row["return_instruction"],
+                    "additional_instruction": row["additional_instruction"],
+                }
+            )
 
-        prompt_responses[row["Prompt_name"]]["fields"][row["fields"]][
-            "question_description"
-        ] = row["question_description"]
-        prompt_responses[row["Prompt_name"]]["fields"][row["fields"]]["example"] = row[
-            "example"
-        ]
-        prompt_responses[row["Prompt_name"]]["fields"][row["fields"]][
-            "question_number"
-        ] = len(prompt_responses[row["Prompt_name"]]["fields"])
+        field = prompt["fields"][row["fields"]]
+        field.update(
+            {
+                "question_description": row["question_description"],
+                "example": row["example"],
+                "question_number": len(prompt["fields"]),
+            }
+        )
 
     return prompt_responses
 
@@ -79,7 +74,7 @@ def process_prompts(input_file):
 def generate_random_page_reference():
     return [
         f"(p{random.randint(1, 100)})",
-        f"(pp{random.randint(1, 5)}-{random.randint(5, 10)})",
+        f"(pp{random.randint(1, 5)}-{random.randint(6, 10)})",
     ][random.randint(0, 1)]
 
 
@@ -97,7 +92,7 @@ def assemble_prompts_to_yaml(prompts: dict):
         result += f"      {prompts[prompt]['prompt_question']}\n\n"
         for field in prompts[prompt]["fields"].keys():
             result += f"      Q{prompts[prompt]['fields'][field]['question_number']}: \
-                {prompts[prompt]['fields'][field]['question_description']}\n"
+{prompts[prompt]['fields'][field]['question_description']}\n"
 
         result += f"\n      {prompts[prompt]['return_instruction']}\n\n"
 

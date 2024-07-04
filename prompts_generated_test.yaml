@@ -7,7 +7,7 @@ system: |
   judgment, provide the paragraph number as part of your answer. If you cannot
   answer any of the questions based on the judgment or metadata, do not make up
   information, but instead write "answer not found"
-  
+
 intro: Based on the metadata and judgment in the following JSON {judgment}, 
 
 prompts:
@@ -28,9 +28,9 @@ prompts:
       Return your answer as a JSON object, following this example:
 
         {{
-          "filing_date": "2010-06-05 00:00:00 (pp1-8)",
-          "interlocutory": "yes (pp2-8)",
-          "interlocutory_date": "2010-03-04 00:00:00 (pp3-7)"
+          "filing_date": "2010-06-05 00:00:00 (p100)",
+          "interlocutory": "yes (pp1-10)",
+          "interlocutory_date": "2010-03-04 00:00:00 (pp2-6)"
         }}
 
   - name: deceased
@@ -49,9 +49,9 @@ prompts:
       Return your answer as a JSON object, following this example:
 
         {{
-          "name": "Susan Miller (p76)",
-          "date_of_death": "2008-05-02 00:00:00 (p67)",
-          "misconduct": "alleged (p71)"
+          "name": "Susan Miller (p58)",
+          "date_of_death": "2008-05-02 00:00:00 (p93)",
+          "misconduct": "alleged (pp4-7)"
         }}
 
   - name: wills
@@ -70,9 +70,9 @@ prompts:
       Return your answer as a JSON object, following this example:
 
         {{
-          "wills": "5/6/1998 (will, p2); 3/4/2002 (will, p3); 5/10/2009 (codicil, p5) (pp4-7)",
-          "executor": "John Jones (pp2-7)",
-          "executor_representatives": "D Duck (pp3-8)"
+          "wills": "5/6/1998 (will, p2); 3/4/2002 (will, p3); 5/10/2009 (codicil, p5) (pp1-6)",
+          "executor": "John Jones (pp3-8)",
+          "executor_representatives": "D Duck (pp5-8)"
         }}
 
   - name: legislation
@@ -89,8 +89,8 @@ prompts:
       Return your answer as a JSON object, following this example:
 
         {{
-          "acts": "Family Provision Act 1982: 1. S6. Definition of 'eligible person'; 2. S7 Provision for maintenance, education, or advancement in life; 3. S9 Provisions affecting the Court's powers under sections 7 and 8. (p52)",
-          "other_claims": "The plaintiff argued claims under the Property (Relationships) Act 1984. (p29)"
+          "acts": "Family Provision Act 1982: 1. S6. Definition of 'eligible person'; 2. S7 Provision for maintenance, education, or advancement in life; 3. S9 Provisions affecting the Court's powers under sections 7 and 8. (pp5-8)",
+          "other_claims": "The plaintiff argued claims under the Property (Relationships) Act 1984. (pp1-7)"
         }}
 
   - name: outcome
@@ -117,13 +117,13 @@ prompts:
       Return your answer as a JSON object, following this example:
 
         {{
-          "successful": "no (pp3-6)",
-          "provision_awarded": "The court awarded that each party should bear their own costs, with the defendants' costs to be paid out of the estate on an indemnity basis.  (pp3-8)",
-          "costs_disputed": "no (pp1-5)",
-          "costs_disputed_amount": " (pp2-8)",
-          "costs_liable": "Each party was liable for their own costs (pp2-6)",
-          "mediation": "yes (pp3-5)",
-          "mediation_date": "2009-06-07 00:00:00 (p93)"
+          "successful": "no (pp4-7)",
+          "provision_awarded": "The court awarded that each party should bear their own costs, with the defendants' costs to be paid out of the estate on an indemnity basis.  (p97)",
+          "costs_disputed": "no (p38)",
+          "costs_disputed_amount": " (pp3-7)",
+          "costs_liable": "Each party was liable for their own costs (p69)",
+          "mediation": "yes (pp3-9)",
+          "mediation_date": "2009-06-07 00:00:00 (pp5-10)"
         }}
 
       Where the answer comes from a specific numbered paragraph in the judgment,
@@ -150,11 +150,11 @@ prompts:
       Return your answer as a JSON object, following this example:
 
         {{
-          "assets": "A house in Sydney valued at $1.2 million dollars, shares to the value of $300,000  (p6)",
-          "value": "$1.5 million dollars  (pp1-10)",
-          "family_home": "yes  (p87)",
-          "notional": "no (p78)",
-          "distribution": "Originally to the deceased's widow, changed by the court to include the deceased's children  (p31)"
+          "assets": "A house in Sydney valued at $1.2 million dollars, shares to the value of $300,000  (p66)",
+          "value": "$1.5 million dollars  (pp2-7)",
+          "family_home": "yes  (p82)",
+          "notional": "no (pp4-8)",
+          "distribution": "Originally to the deceased's widow, changed by the court to include the deceased's children  (pp4-7)"
         }}
 
       Where the answer comes from a specific numbered paragraph in the judgment,
@@ -198,19 +198,19 @@ prompts:
       the following structure for each party, following this example:
 
         {{
-          "name": "John Smith (p79)",
-          "role_in_trial": "Plaintiff (pp5-9)",
-          "representatives": "Alan Smithee, QC (pp1-8)",
-          "costs": "20000 (pp1-6)",
-          "natural_person": "True (pp2-8)",
-          "relationship_to_deceased": "son (p78)",
-          "is_dependant": "True (p16)",
-          "misconduct": "False (p75)",
-          "estranged": "False (pp5-9)",
-          "financial": "the party has good financial circumstances  (pp4-8)",
-          "family": "The party is married with three children and lives in Sydney  (pp5-5)",
-          "illegal": "the party threatened the plaintiff  (p43)",
-          "contingent": "True (pp3-8)"
+          "name": "John Smith (pp1-8)",
+          "role_in_trial": "Plaintiff (pp3-8)",
+          "representatives": "Alan Smithee, QC (pp3-7)",
+          "costs": "20000 (pp4-8)",
+          "natural_person": "True (p89)",
+          "relationship_to_deceased": "son (pp2-7)",
+          "is_dependant": "True (pp2-7)",
+          "misconduct": "False (pp4-6)",
+          "estranged": "False (pp5-6)",
+          "financial": "the party has good financial circumstances  (pp1-7)",
+          "family": "The party is married with three children and lives in Sydney  (pp4-9)",
+          "illegal": "the party threatened the plaintiff  (p45)",
+          "contingent": "True (p96)"
         }}
 
       Where the answer comes from a specific numbered paragraph in the judgment,
