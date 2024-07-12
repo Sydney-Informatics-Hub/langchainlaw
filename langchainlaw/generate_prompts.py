@@ -9,8 +9,18 @@ random.seed(42)
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Convert XLSX prompts to YAML")
-    parser.add_argument("input_file", help="Path to the input XLSX file")
-    parser.add_argument("output_file", help="Path to the output YAML file")
+    parser.add_argument(
+        "-i",
+        "--input_file",
+        help="Path to the input XLSX file",
+        default="tests/sample_prompts.xlsx",
+    )
+    parser.add_argument(
+        "-o",
+        "--output_file",
+        help="Path to the output YAML file",
+        default="tests/prompts_generated_test.yaml",
+    )
     return parser.parse_args()
 
 
@@ -116,6 +126,19 @@ def assemble_prompts_to_yaml(prompts: dict):
     return result
 
 
+def assemble_complete_yaml(
+    input_file: str = "tests/sample_prompts.xlsx",
+    output_file: str = "tests/prompts_generated_test.yaml",
+):
+    system = process_system_intro(input_file)
+    prompts = process_prompts(input_file)
+    assembled_prompts = assemble_prompts_to_yaml(prompts)
+
+    final = system + "\n" + assembled_prompts
+    with open(output_file, "w") as f:
+        f.write(final)
+
+
 def main():
     args = parse_arguments()
     system = process_system_intro(args.input_file)
@@ -132,4 +155,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    assemble_complete_yaml()

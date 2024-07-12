@@ -3,6 +3,7 @@ import yaml
 import json
 import re
 
+from langchainlaw.generate_prompts import assemble_complete_yaml
 from langchain.schema import HumanMessage, SystemMessage
 
 JSON_QUOTE_RE = re.compile("```json(.*)```")
@@ -169,8 +170,14 @@ class CaseChat:
     def prompt(self, name):
         return self._prompts.get(name, None)
 
-    def load_yaml(self, yaml_file):
-        with open(yaml_file, "r") as fh:
+    def assemble_yaml_from_spreadsheet(self, input_file):
+        output_file = input_file.split(".")[0] + ".yaml"
+        assemble_complete_yaml(input_file, output_file)
+        return output_file
+
+    def load_yaml(self, input_file):
+        output_file = self.assemble_yaml_from_spreadsheet(input_file)
+        with open(output_file, "r") as fh:
             prompt_cf = yaml.load(fh, Loader=yaml.Loader)
             self._system = prompt_cf["system"]
             self._intro_template = prompt_cf["intro"]

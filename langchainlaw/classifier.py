@@ -22,7 +22,7 @@ class Classifier:
             sys.exit(-1)
         self.prompts = CaseChat()
         # will throw a PromptException if misconfigured
-        self.prompts.load_yaml(config["prompts"])
+        self.prompts.load_yaml(config["prompts_spreadsheet"])
         self.test = False
         self.headers = ["file", "mnc"]
         for prompt in self.prompts.next_prompt():
