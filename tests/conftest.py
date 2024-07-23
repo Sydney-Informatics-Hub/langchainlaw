@@ -3,7 +3,12 @@ import pytest
 
 @pytest.fixture
 def files():
-    return {"config": "tests/config.json", "case": "tests/input/123456789abcdef0.json"}
+    return {
+        "config": "tests/config.json",
+        "case": "tests/input/123456789abcdef0.json",
+        "prompt_spreadsheet": "tests/sample_prompts.xlsx",
+        "prompt_json": "tests/sample_prompts.json",
+    }
 
 
 @pytest.fixture
