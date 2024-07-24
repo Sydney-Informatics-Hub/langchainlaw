@@ -14,5 +14,4 @@ def test_load_spreadsheet(files):
     prompts = process_prompts(files["prompt_spreadsheet"])
     with open(files["prompt_json"], "r") as fh:
         expect_prompts = json.load(fh)
-    assert prompts is not None
     assert prompts == expect_prompts

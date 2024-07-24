@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 import yaml
 import json
+import random
 import re
 
 from langchainlaw.generate_prompts import assemble_complete_yaml
@@ -25,12 +26,37 @@ class PromptException(Exception):
     pass
 
 
+# TODO -
+# put the structured data from the spreadsheet into this class
+# for each field:
+#    question_description
+#    example
+#    question_number (this can be inferred)
+# return_instruction
+# additional_instructions
+
+
+def random_para_ref():
+    return [
+        f"(p{random.randint(1, 100)})",
+        f"(pp{random.randint(1, 5)}-{random.randint(6, 10)})",
+    ][random.randint(0, 1)]
+
+
+@dataclass
+class CaseQuestion:
+    field: str
+    question: str
+    example_response: str
+
+
 @dataclass
 class CasePrompt:
     name: str
-    prompt: str
+    return_instruction: str
+    additional_instructions: str
     return_type: str
-    fields: list[str] = field(default_factory=list)
+    fields: list[CaseQuestion] = field(default_factory=list)
     repeats: int = 1
 
     @property
@@ -47,6 +73,29 @@ class CasePrompt:
             else:
                 return [f"{self.name}:{f}" for f in self.fields]
 
+    @property
+    def prompt(self):
+        prompt = f"      {self.question}\n\n"
+        i = 1
+        for f in self.fields:
+            prompt += f"      Q{i}: {f.question}\n"
+            i += 1
+        prompt += f"\n      {self.return_instruction}\n\n"
+
+        # reconstruct a dictionary from the fields, keeping the key and "example" value
+
+        response = {
+            field: field.mock_response + " " + random_para_ref()
+            for field in self.fields
+        }
+
+        prompt += f"""        {{{str(json.dumps(response, indent=10))[:-2]}
+        }}}}
+"""
+        if self.additional_instruction is not None:
+            prompt += f"      {self.additional_instruction}\n\n"
+        return prompt
+
     def collimate(self, result):
         """Take a results set for this prompt and return an array of the
         results as columns."""
@@ -57,10 +106,10 @@ class CasePrompt:
         if self.return_type == "json_multiple":
             if result is None:
                 return ["" for _ in self.fields]
-            return [single.get(f) for single in result for f in self.fields]
+            return [single.get(f.field) for single in result for f in self.fields]
         if result is None:
             return ["" for _ in self.fields]
-        return [result.get(f) for f in self.fields]
+        return [result.get(f.field) for f in self.fields]
 
     def flatten(self, result):
         """Take a results set for this prompt and return a dict by either
@@ -70,11 +119,11 @@ class CasePrompt:
             return {self.name: result}
         if self.return_type == "json_multiple":
             return {
-                f"{self.name}:{n + 1}:{f}": result[n].get(f)
+                f"{self.name}:{n + 1}:{f}": result[n].get(f.field)
                 for n in range(len(result))
                 for f in self.fields
             }
-        return {f"{self.name}:{f}": result.get(f) for f in self.fields}
+        return {f"{self.name}:{f}": result.get(f.field) for f in self.fields}
 
     def parse_response(self, response):
         """Parses the string returned by the LLM, and also does some basic
@@ -102,12 +151,12 @@ class CasePrompt:
             return message
 
     def json_to_fields(self, o):
-        return {f"{self.name}:{f}": o.get(f, "") for f in self.fields}
+        return {f"{self.name}:{f.field}": o.get(f.field, "") for f in self.fields}
 
     def multi_json_to_fields(self, results):
         """returns a dict with keys like 'parties0:name' for multivalue fields"""
         return {
-            f"{self.name}{i}:{f}": results[i].get(f, "")
+            f"{self.name}{i}:{f.field}": results[i].get(f.field, "")
             for i in range(len(results))
             for f in self.fields
         }
@@ -116,7 +165,7 @@ class CasePrompt:
         if self.return_type == "text":
             return [msg]
         else:
-            cols = ["" for f in self.fields]
+            cols = ["" for _ in self.fields]
             cols[0] = msg
             return cols
 
@@ -124,7 +173,7 @@ class CasePrompt:
         """returns string literals for JSON fields so that they can be parsed"""
         if self.fields is None:
             return "plaintext value"
-        o = {f: "JSON value" for f in self.fields}
+        o = {f.field: f.example_response for f in self.fields}
         if self.return_type == "json_literal":
             return json.dumps(o)
         if self.return_type == "json_multiple":
