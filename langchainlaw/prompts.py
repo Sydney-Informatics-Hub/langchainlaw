@@ -53,10 +53,11 @@ class CaseQuestion:
 @dataclass
 class CasePrompt:
     name: str
+    question: str
     return_instruction: str
-    additional_instructions: str
     return_type: str
     fields: list[CaseQuestion] = field(default_factory=list)
+    additional_instruction: str = None
     repeats: int = 1
 
     @property
@@ -85,8 +86,7 @@ class CasePrompt:
         # reconstruct a dictionary from the fields, keeping the key and "example" value
 
         response = {
-            field: field.mock_response + " " + random_para_ref()
-            for field in self.fields
+            f.field: f.example_response + " " + random_para_ref() for f in self.fields
         }
 
         prompt += f"""        {{{str(json.dumps(response, indent=10))[:-2]}
@@ -267,6 +267,13 @@ class CaseChat:
             fields=fields,
             repeats=repeats,
         )
+
+    def add_caseprompt(self, prompt):
+        """New version where you pass in a CasePrompt"""
+        if prompt.name in self._prompts:
+            raise ValueError(f"Prompt with name {prompt.name} already exists")
+        self._prompt_names.append(prompt.name)
+        self._prompts[prompt.name] = prompt
 
     def start_chat(self):
         return SystemMessage(content=self.system)
