@@ -3,6 +3,7 @@ import yaml
 import json
 import random
 import re
+import pandas as pd
 
 from langchainlaw.generate_prompts import assemble_complete_yaml
 from langchain.schema import HumanMessage, SystemMessage
@@ -26,16 +27,6 @@ class PromptException(Exception):
     pass
 
 
-# TODO -
-# put the structured data from the spreadsheet into this class
-# for each field:
-#    question_description
-#    example
-#    question_number (this can be inferred)
-# return_instruction
-# additional_instructions
-
-
 def random_para_ref():
     return [
         f"(p{random.randint(1, 100)})",
@@ -44,7 +35,7 @@ def random_para_ref():
 
 
 @dataclass
-class CaseQuestion:
+class CasePromptField:
     field: str
     question: str
     example_response: str
@@ -56,7 +47,7 @@ class CasePrompt:
     question: str
     return_instruction: str
     return_type: str
-    fields: list[CaseQuestion] = field(default_factory=list)
+    fields: list[CasePromptField] = field(default_factory=list)
     additional_instruction: str = None
     repeats: int = 1
 
@@ -67,12 +58,12 @@ class CasePrompt:
         else:
             if self.return_type == "json_multiple":
                 return [
-                    f"{self.name}{n}:{f}"
+                    f"{self.name}{n}:{f.field}"
                     for n in range(1, self.repeats + 1)
                     for f in self.fields
                 ]
             else:
-                return [f"{self.name}:{f}" for f in self.fields]
+                return [f"{self.name}:{f.field}" for f in self.fields]
 
     @property
     def prompt(self):
@@ -186,12 +177,15 @@ class CasePrompt:
             raise PromptException("json_multiple needs a fields section")
 
 
+# Should this also be a dataclass?
+
+
 class CaseChat:
     def __init__(self):
         self._system = None
         self._judgment = None
-        self._intro = None
-        self._intro_template = None
+        self._prompt_judgment = None
+        self._judgment_template = None
         self._prompts = {}
         self._prompt_names = []
 
@@ -210,11 +204,7 @@ class CaseChat:
     @judgment.setter
     def judgment(self, v):
         self._judgment = v
-        self._intro = self._intro_template.format(judgment=json.dumps(v))
-
-    @property
-    def intro(self):
-        return self._intro
+        self._prompt_judgment = self._judgment_template.format(judgment=json.dumps(v))
 
     def prompt(self, name):
         return self._prompts.get(name, None)
@@ -229,7 +219,7 @@ class CaseChat:
         with open(output_file, "r") as fh:
             prompt_cf = yaml.load(fh, Loader=yaml.Loader)
             self._system = prompt_cf["system"]
-            self._intro_template = prompt_cf["intro"]
+            self._prompt_judgment_template = prompt_cf["intro"]
             for p in prompt_cf["prompts"]:
                 self.add_prompt(
                     p["name"],
@@ -247,6 +237,51 @@ class CaseChat:
                     valid = False
         return valid
 
+    def load(self, spreadsheet):
+        """Load the prompts, system prompt and intro template from spreadsheet"""
+
+        system = pd.read_excel(spreadsheet, sheet_name="system")
+        # extract the first row from column System
+        self._system = system["System"][0]
+
+        intro = pd.read_excel(spreadsheet, sheet_name="intro")
+        self._judgment_template = intro["Intro"][0]
+        self.load_prompt_sheet(spreadsheet)
+
+    def load_prompt_sheet(self, spreadsheet):
+        prompts = pd.read_excel(spreadsheet, sheet_name="prompts", dtype=str).fillna("")
+
+        first_row = None
+        fields = []
+        for _, row in prompts.iterrows():
+            if row["return_type"]:
+                if first_row is not None:
+                    self.add_row(first_row, fields)
+                first_row = row[:]
+                fields = []
+            fields.append(
+                CasePromptField(
+                    field=row["fields"],
+                    question=row["question_description"],
+                    example_response=row["example"],
+                )
+            )
+
+        if first_row is not None:
+            self.add_row(first_row, fields)
+
+    def add_row(self, row, fields):
+        self.add_prompt(
+            CasePrompt(
+                name=row["Prompt_name"],
+                question=row["prompt_question"],
+                return_instruction=row["return_instruction"],
+                return_type=row["return_type"],
+                additional_instruction=row["additional_instruction"],
+                fields=fields,
+            )
+        )
+
     def debug(self):
         print("Debugging prompts")
         for name in self.prompt_names:
@@ -256,7 +291,7 @@ class CaseChat:
             print(prompt.return_type)
             print(prompt.fields)
 
-    def add_prompt(self, name, prompt, return_type, fields, repeats):
+    def add_prompt_old(self, name, prompt, return_type, fields, repeats):
         if name in self._prompts:
             raise ValueError(f"Prompt with name {name} already defined")
         self._prompt_names.append(name)
@@ -268,7 +303,7 @@ class CaseChat:
             repeats=repeats,
         )
 
-    def add_caseprompt(self, prompt):
+    def add_prompt(self, prompt):
         """New version where you pass in a CasePrompt"""
         if prompt.name in self._prompts:
             raise ValueError(f"Prompt with name {prompt.name} already exists")
@@ -282,6 +317,14 @@ class CaseChat:
         for prompt_name in self._prompt_names:
             yield self._prompts[prompt_name]
 
-    def message(self, prompt):
-        content = self._intro + prompt.prompt
-        return HumanMessage(content=content)
+    def make_message(self, prompt):
+        """Builds the complete prompt from the JSON-encoded judgment and
+        the prompt questions (which also will include examples for the LLM to
+        return)"""
+        if self._prompt_judgment is not None:
+            content = self._prompt_judgment + prompt.prompt
+            return HumanMessage(content=content)
+        else:
+            raise PromptException(
+                "Need to set the judgment with judgment() before make_message()"
+            )

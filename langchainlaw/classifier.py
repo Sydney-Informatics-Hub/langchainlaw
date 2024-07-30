@@ -15,18 +15,17 @@ class Classifier:
 
     def __init__(self, config, quiet=False):
         self.provider = config["provider"]
+        self.spreadsheet = config["prompts"]
         try:
             self.api_cf = config["providers"][self.provider]
         except KeyError:
             print(f"Unknown provider: {self.provider}")
             sys.exit(-1)
         self.prompts = CaseChat()
-        # will throw a PromptException if misconfigured
-        self.prompts.load_yaml(config["prompts_spreadsheet"])
+        # # will throw a PromptException if misconfigured
+        # self.prompts.load_yaml(config["prompts_spreadsheet"])
         self.test = False
-        self.headers = ["file", "mnc"]
-        for prompt in self.prompts.next_prompt():
-            self.headers.extend(prompt.headers)
+        self.headers = None
         self.quiet = quiet
         self.chat = ChatOpenAI(
             model_name=self.api_cf["model"],
@@ -34,17 +33,22 @@ class Classifier:
             openai_organization=self.api_cf["organization"],
             temperature=config["temperature"],
         )
-
         self.rate_limit = config.get("rate_limit", RATE_LIMIT)
         cache_dir = config.get("cache", None)
         self.cache = None
         if cache_dir:
             self.cache = Cache(cache_dir)
 
-    def load_case(self, casefile):
-        """Load JSON casefile"""
-        with open(casefile, "r") as file:
-            return json.load(file)
+    def load_prompts(self, spreadsheet=None):
+        """Load prompts from the spreadsheet file passed in, or the config"""
+        if spreadsheet is None:
+            spreadsheet = self.spreadsheet
+
+        response = self.prompts.load(spreadsheet)
+        self.headers = ["file", "mnc"]
+        for prompt in self.prompts.next_prompt():
+            self.headers.extend(prompt.headers)
+        return response
 
     def message(self, str):
         """Print some progress info unless set to quiet mode"""
@@ -62,7 +66,7 @@ class Classifier:
         the response if required (for json prompts)
 
         """
-        message = self.prompts.message(prompt)
+        message = self.prompts.make_message(prompt)
         try:
             if self.test:
                 if self.cache:
@@ -117,7 +121,8 @@ class Classifier:
         dict by prompt label."""
         self.test = test
         case_id = casefile.stem
-        self.prompts.judgment = self.load_case(casefile)
+        with open(casefile, "r") as file:
+            self.prompts.judgment = json.load(file)
         results = {"file": str(casefile), "mnc": self.prompts.judgment["mnc"]}
 
         system_prompt = self.prompts.start_chat()
