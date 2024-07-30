@@ -271,6 +271,13 @@ class CaseChat:
             self.add_row(first_row, fields)
 
     def add_row(self, row, fields):
+        repeats = 1
+        if row["return_type"] == "json_multiple":
+            if row["repeats"]:
+                try:
+                    repeats = int(row["repeats"])
+                except ValueError:
+                    raise PromptException("'repeats' must be an integer")
         self.add_prompt(
             CasePrompt(
                 name=row["Prompt_name"],
@@ -279,6 +286,7 @@ class CaseChat:
                 return_type=row["return_type"],
                 additional_instruction=row["additional_instruction"],
                 fields=fields,
+                repeats=repeats,
             )
         )
 
