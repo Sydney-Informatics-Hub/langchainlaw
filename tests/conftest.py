@@ -107,22 +107,39 @@ def results():
                 "5/6/1998 (will, p2); 3/4/2002 (will, p3);" " 5/10/2009 (codicil, p5)"
             ),
         },
-        "legislation": {"acts": "", "other_claims": ""},
+        "legislation": {
+            "acts": "Family Provision Act 1982",
+            "other_claims": "None mentioned",
+        },
         "outcome": {
-            "successful": "",
-            "provision_awarded": "",
-            "costs_disputed": "",
-            "costs_disputed_amount": "",
-            "costs_liable": "",
-            "mediation": "",
-            "mediation_date": "",
+            "successful": "no",
+            "provision_awarded": (
+                "The court awarded that each party should bear their own costs,"
+                " with the defendants' costs to be paid out of the estate on"
+                " an indemnity basis. (p9)"
+            ),
+            "costs_disputed": "yes",
+            "costs_disputed_amount": "unclear",
+            "costs_liable": (
+                "Each party was liable for their own costs, with the"
+                " defendants' costs to be paid out of the estate on an"
+                " indemnity basis. (p9)"
+            ),
+            "mediation": "unclear",
+            "mediation_date": "n/a",
         },
         "estate": {
-            "assets": "",
-            "value": "",
-            "family_home": "",
-            "notional": "",
-            "distribution": "",
+            "assets": (
+                "A property which was the principal asset of the estate" " (p7)"
+            ),
+            "value": "Not stated",
+            "family_home": "yes (p7)",
+            "notional": "no",
+            "distribution": (
+                "The testator's wife left the whole of her estate to the"
+                " plaintiff, but the testator wanted to treat his children"
+                " equally (p6)"
+            ),
         },
         "parties": [
             {
