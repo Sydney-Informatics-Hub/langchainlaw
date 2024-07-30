@@ -58,7 +58,7 @@ def headers():
         "estate:distribution",
         "parties1:name",
         "parties1:role_in_trial",
-        "parties1:legal_representatives",
+        "parties1:representatives",
         "parties1:costs",
         "parties1:natural_person",
         "parties1:relationship_to_deceased",
