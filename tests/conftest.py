@@ -90,13 +90,39 @@ def results():
     return {
         "file": "tests/input/123456789abcdef0.json",
         "mnc": "This is a dummy case to feed to the classifier for tests",
-        "will_date": (
-            """[{"document": "will", "paragraph": "1", "date": "19/12/2006"}, """
-            """{"document": "will", "paragraph": "13", "date": "7/3/2010"}]"""
-        ),
-        "executor": {
-            "name": "Joe Executor",
-            "representative": "L Hutz",
+        "dates": {
+            "filing_date": "2010-06-05",
+            "interlocutory": "yes",
+            "interlocutory_date": "2010-03-04",
+        },
+        "deceased": {
+            "date_of_death": "2008-05-02",
+            "misconduct": "alleged",
+            "name": "Susan Miller",
+        },
+        "wills": {
+            "executor": "John Jones",
+            "executor_representatives": "D Duck",
+            "wills": (
+                "5/6/1998 (will, p2); 3/4/2002 (will, p3);" " 5/10/2009 (codicil, p5)"
+            ),
+        },
+        "legislation": {"acts": "", "other_claims": ""},
+        "outcome": {
+            "successful": "",
+            "provision_awarded": "",
+            "costs_disputed": "",
+            "costs_disputed_amount": "",
+            "costs_liable": "",
+            "mediation": "",
+            "mediation_date": "",
+        },
+        "estate": {
+            "assets": "",
+            "value": "",
+            "family_home": "",
+            "notional": "",
+            "distribution": "",
         },
         "parties": [
             {

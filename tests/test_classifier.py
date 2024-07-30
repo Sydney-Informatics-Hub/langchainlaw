@@ -1,7 +1,6 @@
 from langchainlaw.classifier import Classifier
 import json
 from pathlib import Path
-import pytest
 
 
 def test_classifier(files, headers):
@@ -13,7 +12,6 @@ def test_classifier(files, headers):
     assert classifier.headers == headers
 
 
-@pytest.mark.skip(reason="not yet")
 def test_parse_results(files, headers, results, flat_results):
     with open(files["config"], "r") as fh:
         cf = json.load(fh)
