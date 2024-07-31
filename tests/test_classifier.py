@@ -8,7 +8,7 @@ def test_classifier(files, headers):
     with open(files["config"], "r") as fh:
         cf = json.load(fh)
     classifier = Classifier(cf)
-    classifier.load_prompts(files["prompt_spreadsheet"])
+    classifier.load_prompts(files["prompts"])
     assert classifier.headers == headers
 
 
@@ -16,7 +16,7 @@ def test_parse_results(files, headers, results, flat_results):
     with open(files["config"], "r") as fh:
         cf = json.load(fh)
     classifier = Classifier(cf)
-    classifier.load_prompts(files["prompt_spreadsheet"])
+    classifier.load_prompts(files["prompts"])
     case = Path(files["case"])
     # note that there are results in the cache as fixtures so this doesn't
     # call the LLM
