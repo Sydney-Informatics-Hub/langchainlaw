@@ -145,7 +145,7 @@ def results():
             {
                 "name": "John Smith",
                 "role_in_trial": "Plaintiff",
-                "legal_representatives": "R Bebbe",
+                "representatives": "R Bebbe",
                 "costs": (
                     "Costs of the Notice of Motion to be the Plaintiff's "
                     "costs in the cause (p35)"
@@ -165,7 +165,7 @@ def results():
             {
                 "name": "Jane Doe",
                 "role_in_trial": "Defendant",
-                "legal_representatives": "M Mouse",
+                "representatives": "M Mouse",
                 "costs": "none",
                 "natural_person": "true",
                 "relationship_to_deceased": "wife",
@@ -192,15 +192,48 @@ def flat_results():
     return {
         "file": "tests/input/123456789abcdef0.json",
         "mnc": "This is a dummy case to feed to the classifier for tests",
-        "will_date": (
-            """[{"document": "will", "paragraph": "1", "date": "19/12/2006"}, """
-            """{"document": "will", "paragraph": "13", "date": "7/3/2010"}]"""
+        "dates:filing_date": "2010-06-05",
+        "dates:interlocutory": "yes",
+        "dates:interlocutory_date": "2010-03-04",
+        "deceased:date_of_death": "2008-05-02",
+        "deceased:misconduct": "alleged",
+        "deceased:name": "Susan Miller",
+        "wills:executor": "John Jones",
+        "wills:executor_representatives": "D Duck",
+        "wills:wills": (
+            "5/6/1998 (will, p2); 3/4/2002 (will, p3); 5/10/2009 (codicil, p5)"
         ),
-        "executor:name": "Joe Executor",
-        "executor:representative": "L Hutz",
+        "legislation:acts": "Family Provision Act 1982",
+        "legislation:other_claims": "None mentioned",
+        "outcome:successful": "no",
+        "outcome:provision_awarded": (
+            "The court awarded that each party should bear their own costs,"
+            " with the defendants' costs to be paid out of the estate on"
+            " an indemnity basis. (p9)"
+        ),
+        "outcome:costs_disputed": "yes",
+        "outcome:costs_disputed_amount": "unclear",
+        "outcome:costs_liable": (
+            "Each party was liable for their own costs, with the"
+            " defendants' costs to be paid out of the estate on an"
+            " indemnity basis. (p9)"
+        ),
+        "outcome:mediation": "unclear",
+        "outcome:mediation_date": "n/a",
+        "estate:assets": (
+            "A property which was the principal asset of the estate" " (p7)"
+        ),
+        "estate:value": "Not stated",
+        "estate:family_home": "yes (p7)",
+        "estate:notional": "no",
+        "estate:distribution": (
+            "The testator's wife left the whole of her estate to the"
+            " plaintiff, but the testator wanted to treat his children"
+            " equally (p6)"
+        ),
         "parties:1:name": "John Smith",
         "parties:1:role_in_trial": "Plaintiff",
-        "parties:1:legal_representatives": "R Bebbe",
+        "parties:1:representatives": "R Bebbe",
         "parties:1:costs": (
             "Costs of the Notice of Motion to be the Plaintiff's "
             "costs in the cause (p35)"
@@ -220,7 +253,7 @@ def flat_results():
         "parties:1:contingent": "not specified",
         "parties:2:name": "Jane Doe",
         "parties:2:role_in_trial": "Defendant",
-        "parties:2:legal_representatives": "M Mouse",
+        "parties:2:representatives": "M Mouse",
         "parties:2:costs": "none",
         "parties:2:natural_person": "true",
         "parties:2:relationship_to_deceased": "wife",

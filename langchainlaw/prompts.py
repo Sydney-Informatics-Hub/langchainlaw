@@ -110,11 +110,11 @@ class CasePrompt:
             return {self.name: result}
         if self.return_type == "json_multiple":
             return {
-                f"{self.name}:{n + 1}:{f}": result[n].get(f.field)
+                f"{self.name}:{n + 1}:{f.field}": result[n].get(f.field)
                 for n in range(len(result))
                 for f in self.fields
             }
-        return {f"{self.name}:{f}": result.get(f.field) for f in self.fields}
+        return {f"{self.name}:{f.field}": result.get(f.field) for f in self.fields}
 
     def parse_response(self, response):
         """Parses the string returned by the LLM, and also does some basic

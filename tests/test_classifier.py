@@ -22,5 +22,5 @@ def test_parse_results(files, headers, results, flat_results):
     # call the LLM
     got_results = classifier.classify(case, test=True)
     assert got_results == results
-    # got_flat = classifier.as_dict(results)
-    # assert got_flat == flat_results
+    got_flat = classifier.as_dict(results)
+    assert got_flat == flat_results
