@@ -104,6 +104,7 @@ def files():
         "config": "tests/config.json",
         "case": "tests/input/123456789abcdef0.json",
         "prompts": "tests/sample_prompts.xlsx",
+        "expect_dates_prompt": "tests/expect_dates_prompt",
         "prompt_json": "tests/sample_prompts.json",
     }
 
