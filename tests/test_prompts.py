@@ -17,5 +17,5 @@ def test_make_prompt(files):
     classifier.load_prompts(files["prompts"])
 
     with pytest.raises(PromptException):
-        prompt = classifier.prompts.prompt("dates")
-        classifier.prompts.make_message(prompt)
+        prompt = classifier.prompt("dates")
+        classifier.make_message(prompt)

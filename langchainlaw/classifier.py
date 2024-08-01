@@ -1,9 +1,12 @@
 import json
 import time
 import sys
+import pandas as pd
 
 from langchain.chat_models import ChatOpenAI
-from langchainlaw.prompts import CaseChat
+from langchain.schema import HumanMessage, SystemMessage
+
+from langchainlaw.prompts import CasePrompt, CasePromptField, PromptException
 from langchainlaw.cache import Cache
 
 RATE_LIMIT = 60
@@ -21,9 +24,12 @@ class Classifier:
         except KeyError:
             print(f"Unknown provider: {self.provider}")
             sys.exit(-1)
-        self.prompts = CaseChat()
-        # # will throw a PromptException if misconfigured
-        # self.prompts.load_yaml(config["prompts_spreadsheet"])
+        self.prompts = {}
+        self.prompt_names = []
+        self.system = None
+        self._judgment = None
+        self._prompt_judgment = None
+        self.judgment_template = None
         self.test = False
         self.headers = None
         self.quiet = quiet
@@ -39,21 +45,43 @@ class Classifier:
         if cache_dir:
             self.cache = Cache(cache_dir)
 
-    def load_prompts(self, spreadsheet=None):
-        """Load prompts from the spreadsheet file passed in, or the config"""
-        if spreadsheet is None:
-            spreadsheet = self.spreadsheet
-
-        response = self.prompts.load(spreadsheet)
-        self.headers = ["file", "mnc"]
-        for prompt in self.prompts.next_prompt():
-            self.headers.extend(prompt.headers)
-        return response
-
     def message(self, str):
         """Print some progress info unless set to quiet mode"""
         if not self.quiet:
             print(str)
+
+    @property
+    def judgment(self):
+        return self._judgment
+
+    @judgment.setter
+    def judgment(self, v):
+        self._judgment = v
+        self._prompt_judgment = self.judgment_template.format(judgment=json.dumps(v))
+
+    def prompt(self, name):
+        """Returns a named prompt object"""
+        return self.prompts[name]
+
+    def start_chat(self):
+        return SystemMessage(content=self.system)
+
+    def next_prompt(self):
+        for prompt_name in self.prompt_names:
+            yield self.prompts[prompt_name]
+
+    def make_message(self, prompt):
+        """Builds the complete prompt from the JSON-encoded judgment and
+        the prompt questions (which also will include examples for the LLM to
+        return)"""
+        if self._prompt_judgment is not None:
+            content = self._prompt_judgment + prompt.prompt
+            return HumanMessage(content=content)
+        else:
+            raise PromptException(
+                "Need to set the judgment with judgment() before"
+                " calling make_message()"
+            )
 
     def run_prompt(self, case_id, prompt):
         """Actually send prompt to LLM, unless there's already a response in the
@@ -66,7 +94,7 @@ class Classifier:
         the response if required (for json prompts)
 
         """
-        message = self.prompts.make_message(prompt)
+        message = self.make_message(prompt)
         try:
             if self.test:
                 if self.cache:
@@ -94,15 +122,99 @@ class Classifier:
             self.cache.write(case_id, prompt.name, response)
         return prompt.parse_response(response)
 
+    def classify(self, casefile, test=False, one_prompt=None):
+        """Run the classifier for a single case and returns the results as a
+        dict by prompt label."""
+        self.test = test
+        case_id = casefile.stem
+        with open(casefile, "r") as file:
+            self.judgment = json.load(file)
+        results = {"file": str(casefile), "mnc": self.judgment["mnc"]}
+
+        system_prompt = self.start_chat()
+
+        if not self.test:
+            self.chat([system_prompt])
+
+        for prompt in self.next_prompt():
+            if not one_prompt or prompt.name == one_prompt:
+                results[prompt.name] = self.run_prompt(case_id, prompt)
+        return results
+
+    def load_prompts(self, spreadsheet):
+        """Load the prompts, system prompt and intro template from spreadsheet"""
+
+        if spreadsheet is None:
+            spreadsheet = self.spreadsheet
+
+        system = pd.read_excel(spreadsheet, sheet_name="system")
+        # extract the first row from column System
+        self.system = system["System"][0]
+
+        intro = pd.read_excel(spreadsheet, sheet_name="intro")
+        self.judgment_template = intro["Intro"][0]
+        self.load_prompt_sheet(spreadsheet)
+
+        self.headers = ["file", "mnc"]
+        for name in self.prompt_names:
+            self.headers.extend(self.prompts[name].headers)
+
+    def load_prompt_sheet(self, spreadsheet):
+        """Loads the worksheet with prompt definitions from the spreadsheet"""
+        prompts = pd.read_excel(spreadsheet, sheet_name="prompts", dtype=str).fillna("")
+
+        first_row = None
+        fields = []
+        for _, row in prompts.iterrows():
+            if row["return_type"]:
+                if first_row is not None:
+                    self.add_prompt(first_row, fields)
+                first_row = row[:]
+                fields = []
+            fields.append(
+                CasePromptField(
+                    field=row["fields"],
+                    question=row["question_description"],
+                    example_response=row["example"],
+                )
+            )
+
+        if first_row is not None:
+            self.add_prompt(first_row, fields)
+
+    def add_prompt(self, row, fields):
+        """Converts a spreadsheet row into a CasePrompt and add it to the
+        prompts dict"""
+        repeats = 1
+        if row["return_type"] == "json_multiple":
+            if row["repeats"]:
+                try:
+                    repeats = int(row["repeats"])
+                except ValueError:
+                    raise PromptException("'repeats' must be an integer")
+        name = row["Prompt_name"]
+        if name in self.prompt_names:
+            raise ValueError(f"Prompt with name {name} defined twice")
+        self.prompt_names.append(name)
+        self.prompts[name] = CasePrompt(
+            name=row["Prompt_name"],
+            question=row["prompt_question"],
+            return_instruction=row["return_instruction"],
+            return_type=row["return_type"],
+            additional_instruction=row["additional_instruction"],
+            fields=fields,
+            repeats=repeats,
+        )
+
     def collimate_one(self, name, results):
         """Collimate one set of results."""
-        return self.prompts.prompt(name).collimate(results)
+        return self.prompts[name].collimate(results)
 
     def as_columns(self, results):
         """Take the dict of results returned by classify and aligns it
         with the column headers from the prompts"""
         cols = [results["file"], results["mnc"]]
-        for name in self.prompts.prompt_names:
+        for name in self.prompt_names:
             cols.extend(self.collimate_one(name, results.get(name, None)))
         return cols
 
@@ -110,27 +222,8 @@ class Classifier:
         """Takes the dict of results returned by classify and returns a
         flattened dict (no nesting, keys are the same as prompts.headers)"""
         d = {"file": results["file"], "mnc": results["mnc"]}
-        for name in self.prompts.prompt_names:
-            r = self.prompts.prompt(name).flatten(results[name])
+        for name in self.prompt_names:
+            r = self.prompts[name].flatten(results[name])
             for k, v in r.items():
                 d[k] = v
         return d
-
-    def classify(self, casefile, test=False, one_prompt=None):
-        """Run the classifier for a single case and returns the results as a
-        dict by prompt label."""
-        self.test = test
-        case_id = casefile.stem
-        with open(casefile, "r") as file:
-            self.prompts.judgment = json.load(file)
-        results = {"file": str(casefile), "mnc": self.prompts.judgment["mnc"]}
-
-        system_prompt = self.prompts.start_chat()
-
-        if not self.test:
-            self.chat([system_prompt])
-
-        for prompt in self.prompts.next_prompt():
-            if not one_prompt or prompt.name == one_prompt:
-                results[prompt.name] = self.run_prompt(case_id, prompt)
-        return results
