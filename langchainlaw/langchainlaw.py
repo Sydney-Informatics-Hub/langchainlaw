@@ -43,10 +43,14 @@ def cli():
 
     classifier = Classifier(config)
 
+    classifier.load_prompts(config["prompts"])
+
+    prompt_filter = None
     if args.prompt:
-        if not classifier.prompts.prompt(args.prompt):
+        if args.prompt not in classifier.prompts:
             print(f"No prompt defined with name '{args.prompt}'")
             return
+        prompt_filter = [args.prompt]
 
     if args.prompt:
         headers = ["file", "mnc", args.prompt]
@@ -64,7 +68,7 @@ def cli():
         cases = Path(config["input"]).glob("*.json")
 
     for casefile in cases:
-        results = classifier.classify(casefile, test=args.test, one_prompt=args.prompt)
+        results = classifier.classify(casefile, test=args.test, prompts=prompt_filter)
         cols = classifier.as_columns(results)
         worksheet.append(cols)
 
