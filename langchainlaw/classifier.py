@@ -83,9 +83,9 @@ class Classifier:
                 " calling make_message()"
             )
 
-    def run_prompt(self, case_id, prompt):
+    def run_prompt(self, case_id, prompt, no_cache=False):
         """Actually send prompt to LLM, unless there's already a response in the
-        cache.
+        cache or no_cache is True
 
         response == what we get back from the LLM (text or json)
         results == a list of values to be written into the spreadsheet
@@ -95,9 +95,10 @@ class Classifier:
 
         """
         message = self.make_message(prompt)
+        response = None
         try:
             if self.test:
-                if self.cache:
+                if self.cache and not no_cache:
                     response = self.cache.read(case_id, prompt.name)
                 if response is not None:
                     self.message(f"[{case_id}] {prompt.name} - cached result")
@@ -105,7 +106,7 @@ class Classifier:
                     self.message(f"[{case_id}] {prompt.name} - mock result")
                     response = prompt.mock_response()
             else:
-                if self.cache:
+                if self.cache and not no_cache:
                     response = self.cache.read(case_id, prompt.name)
                 if response is not None:
                     self.message(f"[{case_id}] {prompt.name} - cached result")
@@ -115,14 +116,12 @@ class Classifier:
                     self.message(f"[{case_id}] pausing for {self.rate_limit}")
                     time.sleep(self.rate_limit)
         except Exception as e:
-            if self.cache:
-                self.cache.write(case_id, prompt.name, str(e))  # FIXME
             return prompt.wrap_error(str(e))
         if self.cache and not self.test:
             self.cache.write(case_id, prompt.name, response)
         return prompt.parse_response(response)
 
-    def classify(self, casefile, test=False, one_prompt=None):
+    def classify(self, casefile, test=False, prompts=None, no_cache=False):
         """Run the classifier for a single case and returns the results as a
         dict by prompt label."""
         self.test = test
@@ -137,8 +136,10 @@ class Classifier:
             self.chat([system_prompt])
 
         for prompt in self.next_prompt():
-            if not one_prompt or prompt.name == one_prompt:
-                results[prompt.name] = self.run_prompt(case_id, prompt)
+            if not prompts or prompt.name in prompts:
+                results[prompt.name] = self.run_prompt(
+                    case_id, prompt, no_cache=no_cache
+                )
         return results
 
     def load_prompts(self, spreadsheet):
