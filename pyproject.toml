@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "langchainlaw"
-version = "0.1.3"
+version = "0.1.4"
 description = ""
 authors = ["Mike Lynch <m.lynch@sydney.edu.au>"]
 readme = "README.md"
