@@ -85,8 +85,6 @@ class CasePrompt:
     def collimate(self, result):
         """Take a results set for this prompt and return an array of the
         results as columns."""
-        print(f"collimate {self.name} {self.return_type}")
-        print(result)
         if self.fields is None:
             return [result]
         if self.return_type == "json_multiple":
