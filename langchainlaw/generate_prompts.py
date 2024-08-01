@@ -4,7 +4,9 @@ import pandas as pd
 from collections import defaultdict
 import random
 
-random.seed(42)
+# The spreadsheet parsing part of this script has been moved into
+# the Classifier class, and the prompt generation has been moved to
+# CasePrompt
 
 
 def parse_arguments():
