@@ -1,0 +1,11 @@
+```json
+{
+  "successful": "no",
+  "provision_awarded": "The court awarded that each party should bear their own costs, with the defendants' costs to be paid out of the estate on an indemnity basis. (p9)",
+  "costs_disputed": "yes",
+  "costs_disputed_amount": "unclear",
+  "costs_liable": "Each party was liable for their own costs, with the defendants' costs to be paid out of the estate on an indemnity basis. (p9)",
+  "mediation": "unclear",
+  "mediation_date": "n/a"
+}
+```

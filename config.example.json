@@ -12,5 +12,5 @@
     "input": "./input/",
     "output": "./output/results.xlsx",
     "cache": "./output/cache",
-    "prompts": "./prompts.yaml"
+    "prompts": "./tests/sample_prompts.xlsx"
 }

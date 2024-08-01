@@ -42,7 +42,7 @@ is configured using a JSON file with the following format:
     "input": "./input/",
     "output": "./output/results.xlsx",
     "cache": "./output/cache",
-    "prompts": "./prompts.yaml"
+    "prompts": "./tests/sample_prompts.xlsx"
 }
 ```
 
@@ -68,9 +68,14 @@ To run the `classify` command, use `poetry run`:
 poetry run classify --config config.json
 ```
 
-If you re-run the classifier, it will look in the cache for each case / prompt combination and return a cached result if it exists, rather than going to the LLM. For now, the only way to stop caching is to delete the cache file or directory for a prompt or case.
+If you re-run the classifier, it will look in the cache for each case / prompt
+combination and return a cached result if it exists, rather than going to the
+LLM. For now, the only way to stop caching is to delete the cache file or
+directory for a prompt or case.
 
-GPT-4o sometimes adds 'notes' to its output even when instructed to return JSON - these notes are also saved to the cache, although they are ignored when building the results spreadsheet.
+GPT-4o sometimes adds 'notes' to its output even when instructed to return
+JSON - these notes are also saved to the cache, although they are ignored when
+building the results spreadsheet.
 
 ## API
 
@@ -86,6 +91,8 @@ with open("config.json", "r") as cfh:
 	config = json.load(cfh)
 
 classifier = Classifier(config)
+
+classifier.load_prompts(config["prompts"])
 
 # classify a single case
 
@@ -111,71 +118,84 @@ keys in the root directory of the repo.
 
 ## Prompts
 
-The following is an example of one of the prompts from `prompts_grouped.yaml`.
+Prompts are configured using an Excel spreadsheet with the following sheets:
 
-This asks three questions about the filing date and any interlocutory application date. You can adjust the prompt text by editing the value of the `prompt` section.
+### system
 
-Note that you need to make sure that the `fields` section has the same list of field names as the JSON example in the prompt.
-
-```
-  - name: dates
-    return_type: json
-    fields:
-      - filing_date
-      - interlocutory
-      - interlocutory_date
-    prompt: |
-      answer the following questions about the case:
-
-      Q1: what is the filing date? DD/MM/YYYY
-      Q2: does this judgment concern an interlocutory application? Answer "yes", "no" or "unclear" 
-      Q3: if the judgment concerns an interlocutory application, what was the date of the application? DD/MM/YYYY
-
-      Return your answer as a JSON object, following this example:
-
-        {{
-          "filing_date": "5/6/2010",
-          "interlocutory": "yes",
-          "interlocutory_date": "4/3/2010"
-        }}
-```
-
-It is possible to construct prompts which ask for multiple sets of JSON results: an example of this can be seen in the `parties` prompt:
+Cell A2 contains the system prompt: this is the message which is sent to the
+LLM as a System prompt and is used to set the persona for the rest of the chat.
+For example:
 
 ```
-  - name: parties
-    return_type: json_multiple
-    fields:
-      - name
-      - role_in_trial
-      - representatives
-      - costs
-      - natural_person
-      - relationship_to_party
-      - is_dependant
-      - misconduct
-      - estranged
-      - financial
-      - family
-      - illegal
-      - contingent
-    repeats: 6
-    prompt: [...]
+You are a legal research assistant helping an academic researcher to answer questions about a public judgment of a decision in inheritance law. You will be provided with the judgment and metadata as a JSON document. Please answer the questions about the judgment based only on information contained in the judgment. Where your answer comes from a specific paragraph in the judgment, provide the paragraph number as part of your answer. If you cannot answer any of the questions based on the judgment or metadata, do not make up
+  information, but instead write ""answer not found"""
 ```
 
-Where prompts have a `return_type` of `json_multiple`, the results will be 
-written to the spreadsheet one set of columns at a time, with headers as follows:
+### intro 
+
+Cell A2 contains the template which is used to start each chat message. The string {judgment} is expanded to the JSON of the case being classified.
+
 
 ```
-parties:1:name
-parties:1:role_in_trial
-parties:1:representatives
-[...]
-parties:2:name
-parties:2:role_in_trial
-parties:2:representatives
+Based on the metadata and judgment in the following JSON {judgment}, 
+
 ```
 
-The maximum number of sets of headers written to the spreadsheet is controlled
-by the `repeats` parameter. Note that if there are more than `repeats` values
-returned by a prompt, all of the values will be written to the spreadsheet.
+### prompts
+
+Each request to the LLM is a set of related questions configured with the
+prompts worksheet. The columns of this sheet are:
+
+* Prompt_name - a unique name for this request
+* return_type - one of `json` or `json_multiple`
+* repeats - for `json_multiple` prompts, how many times to repeat the sets of questions in the results spreadsheet
+* prompt_question - the top-level question
+* return_instruction - text telling the LLM what sort of JSON structure to return
+* additional_instruction - additional instructions at the end of the question, if required
+* fields - a unique name for each sub-question, used as the keys in the JSON returned
+* question_description - the text of the sub-question
+* example - an example answer for the sub-question
+
+For example, in the sample spreadsheet, the prompt ```dates``` has the following
+spreadsheet values:
+
+* return_type: `json`
+* repeats: n/a
+* prompt_question: "answer the following questions about the case:"
+* return_instruction - "Return your answer as a JSON object, following this example:"
+* additional_instruction - none
+* filing_date:
+  * question_description: what is the filing date? DD/MM/YYYY
+  * example: "5/6/2010"
+* interlocutory:
+  * question_description: does this judgment concern an interlocutory application? Answer "yes", "no" or "unclear"
+  * example: "yes"
+* interlocutory_date:
+  * question_description: "if the judgment concerns an interlocutory application, what was the date of the application? DD/MM/YYYY"
+  * example: "4/3/2010"
+
+From these, the classifier will build the following prompt:
+
+```
+  answer the following questions about the case:
+
+  Q1: what is the filing date? DD/MM/YYYY
+  Q2: does this judgment concern an interlocutory application? Answer "yes", "no" or "unclear" 
+  Q3: if the judgment concerns an interlocutory application, what was the date of the application? DD/MM/YYYY
+
+  Return your answer as a JSON object, following this example:
+    {{
+      "filing_date": "5/6/2010",
+      "interlocutory": "yes",
+      "interlocutory_date": "4/3/2010"
+    }}
+```
+
+Note that the example JSON is constructed automatically from the example
+answers in the "example" column.
+
+
+## Acknowledgements
+
+This project is partially funded by a 2022 University of Sydney Research
+Accelerator (SOAR) Prize awarded to Ben Chen.

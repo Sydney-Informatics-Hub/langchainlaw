@@ -1,0 +1,245 @@
+{
+  "dates": {
+    "fields": {
+      "filing_date": {
+        "question_description": "What is the filing date? DD/MM/YYYY",
+        "example": "2010-06-05 00:00:00",
+        "question_number": 1
+      },
+      "interlocutory": {
+        "question_description": "Does this judgment concern an interlocutory applicatidoes this judgment concern an interlocutory application? Answer \"yes\", \"no\" or \"unclear\" on?",
+        "example": "yes",
+        "question_number": 2
+      },
+      "interlocutory_date": {
+        "question_description": "If the judgment concerns an interlocutory application, what was the date of the application?  DD/MM/YYYY",
+        "example": "2010-03-04 00:00:00",
+        "question_number": 3
+      }
+    },
+    "return_type": "json",
+    "repeats": "",
+    "prompt_question": "answer the following questions about the case:",
+    "return_instruction": "Return your answer as a JSON object, following this example:",
+    "additional_instruction": ""
+  },
+  "deceased": {
+    "fields": {
+      "name": {
+        "question_description": "what was the deceased's name?",
+        "example": "Susan Miller",
+        "question_number": 1
+      },
+      "date_of_death": {
+        "question_description": "when did the deceased die? DD/MM/YYYY",
+        "example": "2008-05-02 00:00:00",
+        "question_number": 2
+      },
+      "misconduct": {
+        "question_description": "had the deceased committed misconduct against any of the parties to the case? Reply with \"alleged\", \"found\" or \"neither\", and provide a citation of the paragraphs or paragraph where the misconduct is described.",
+        "example": "alleged",
+        "question_number": 3
+      }
+    },
+    "return_type": "json",
+    "repeats": "",
+    "prompt_question": "answer the following questions about the case:",
+    "return_instruction": "Return your answer as a JSON object, following this example:",
+    "additional_instruction": ""
+  },
+  "wills": {
+    "fields": {
+      "wills": {
+        "question_description": "identify every will, codicil and revocation mentioned in the case and the dates when these were made",
+        "example": "5/6/1998 (will, p2); 3/4/2002 (will, p3); 5/10/2009 (codicil, p5)",
+        "question_number": 1
+      },
+      "executor": {
+        "question_description": "who is the executor or administrator of the deceased's estate?",
+        "example": "John Jones",
+        "question_number": 2
+      },
+      "executor_representatives": {
+        "question_description": "who is are the legal representatives, if any, of the executor or adminstrator?",
+        "example": "D Duck",
+        "question_number": 3
+      }
+    },
+    "return_type": "json",
+    "repeats": "",
+    "prompt_question": "answer the following questions about the case:",
+    "return_instruction": "Return your answer as a JSON object, following this example:",
+    "additional_instruction": ""
+  },
+  "legislation": {
+    "fields": {
+      "acts": {
+        "question_description": "what sections of the Succession Act or Family Provision Act are mentioned?",
+        "example": "Family Provision Act 1982: 1. S6. Definition of 'eligible person'; 2. S7 Provision for maintenance, education, or advancement in life; 3. S9 Provisions affecting the Court's powers under sections 7 and 8.",
+        "question_number": 1
+      },
+      "other_claims": {
+        "question_description": "what other claims did the plaintiff argue, aside from the Succession Act? For example, presumed undue influence, actual undue influence, incapacity",
+        "example": "The plaintiff argued claims under the Property (Relationships) Act 1984.",
+        "question_number": 2
+      }
+    },
+    "return_type": "json",
+    "repeats": "",
+    "prompt_question": "answer the following questions about the judgment:",
+    "return_instruction": "Return your answer as a JSON object, following this example:",
+    "additional_instruction": ""
+  },
+  "outcome": {
+    "fields": {
+      "successful": {
+        "question_description": "were the plaintiff's claims successful? Answer \"yes\" or \"no\"",
+        "example": "no",
+        "question_number": 1
+      },
+      "provision_awarded": {
+        "question_description": "what provision did the court award?",
+        "example": "The court awarded that each party should bear their own costs, with the defendants' costs to be paid out of the estate on an indemnity basis. ",
+        "question_number": 2
+      },
+      "costs_disputed": {
+        "question_description": "did the parties have a dispute about their costs? Answer \"yes\", \"no\" or \"unclear\"",
+        "example": "no",
+        "question_number": 3
+      },
+      "costs_disputed_amount": {
+        "question_description": "what was the amount of costs in the dispute, if any?",
+        "example": "",
+        "question_number": 4
+      },
+      "costs_liable": {
+        "question_description": "which party or parties were liable for costs?",
+        "example": "Each party was liable for their own costs",
+        "question_number": 5
+      },
+      "mediation": {
+        "question_description": "did the parties participate in mediation or any other alternative dispute resolution? ",
+        "example": "yes",
+        "question_number": 6
+      },
+      "mediation_date": {
+        "question_description": "if the parties participated in mediation or alternative dispute resolution, on what date did this take place? DD/MM/YYYY or n/a",
+        "example": "2009-06-07 00:00:00",
+        "question_number": 7
+      }
+    },
+    "return_type": "json",
+    "repeats": "",
+    "prompt_question": "answer the following questions about the case's outcome and costs:",
+    "return_instruction": "Return your answer as a JSON object, following this example:",
+    "additional_instruction": "Where the answer comes from a specific numbered paragraph in the judgment,\n      provide the answer as a brief precis of the details, followed by the\n      number of the paragraph, as in \"a precis of the answer (p5)\""
+  },
+  "estate": {
+    "fields": {
+      "assets": {
+        "question_description": "what are all of the assets which make up the deceased's estate?",
+        "example": "A house in Sydney valued at $1.2 million dollars, shares to the value of $300,000 ",
+        "question_number": 1
+      },
+      "value": {
+        "question_description": "what is the monetary value of the estate, if stated?",
+        "example": "$1.5 million dollars ",
+        "question_number": 2
+      },
+      "family_home": {
+        "question_description": "is the family or matrimonial home in dispute?",
+        "example": "yes ",
+        "question_number": 3
+      },
+      "notional": {
+        "question_description": "did the court designate any property as notional estate?",
+        "example": "no",
+        "question_number": 4
+      },
+      "distribution": {
+        "question_description": "how is the deceased's estate distributed according to the last will or intestacy rules?",
+        "example": "Originally to the deceased's widow, changed by the court to include the deceased's children ",
+        "question_number": 5
+      }
+    },
+    "return_type": "json",
+    "repeats": "",
+    "prompt_question": "answer the following questions about the deceased's estate:",
+    "return_instruction": "Return your answer as a JSON object, following this example:",
+    "additional_instruction": "Where the answer comes from a specific numbered paragraph in the judgment,\n      provide the answer as a brief precis of the details, followed by the\n      number of the paragraph, as in \"a precis of the answer (p5)\""
+  },
+  "parties": {
+    "fields": {
+      "name": {
+        "question_description": "What is the party's full name?",
+        "example": "John Smith",
+        "question_number": 1
+      },
+      "role_in_trial": {
+        "question_description": "What is the party's role in the trial - plaintiff, defendant, respondent, executor, etc.",
+        "example": "Plaintiff",
+        "question_number": 2
+      },
+      "representatives": {
+        "question_description": "Who are the party's legal representatives?",
+        "example": "Alan Smithee, QC",
+        "question_number": 3
+      },
+      "costs": {
+        "question_description": "What is the amount of the costs incurred by this party, if any?",
+        "example": "20000",
+        "question_number": 4
+      },
+      "natural_person": {
+        "question_description": "Is the party a natural person?",
+        "example": "True",
+        "question_number": 5
+      },
+      "relationship_to_deceased": {
+        "question_description": "What was the party's relationship to the deceased?",
+        "example": "son",
+        "question_number": 6
+      },
+      "is_dependant": {
+        "question_description": "Was the party dependant on the deceased?",
+        "example": "True",
+        "question_number": 7
+      },
+      "misconduct": {
+        "question_description": "Had the party committed misconduct against the deceased, and if so, what?",
+        "example": "False",
+        "question_number": 8
+      },
+      "estranged": {
+        "question_description": "Was the party estranged from the deceased?",
+        "example": "False",
+        "question_number": 9
+      },
+      "financial": {
+        "question_description": "What are the party's financial circumstances?",
+        "example": "the party has good financial circumstances ",
+        "question_number": 10
+      },
+      "family": {
+        "question_description": "What are the party's family and personal circumstances?",
+        "example": "The party is married with three children and lives in Sydney ",
+        "question_number": 11
+      },
+      "illegal": {
+        "question_description": "Has the party engaged in any illegal behaviour, and, if so, what?",
+        "example": "the party threatened the plaintiff ",
+        "question_number": 12
+      },
+      "contingent": {
+        "question_description": "Does the party have a conditional or contingent fee agreement with their legal representatives?",
+        "example": "True",
+        "question_number": 13
+      }
+    },
+    "return_type": "json_multiple",
+    "repeats": "6",
+    "prompt_question": "identify each of the parties in the case and answer each of the following questions about each party:",
+    "return_instruction": "Return your answer as a list of JSON objects, one for each party, with\n      the following structure for each party, following this example:",
+    "additional_instruction": "Where the answer comes from a specific numbered paragraph in the judgment,\n      provide the answer as a brief precis of the details, followed by the\n      number of the paragraph, as in \"a precis of the answer (p5)\""
+  }
+}

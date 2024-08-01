@@ -3,7 +3,7 @@
   {
     "name": "John Smith",
     "role_in_trial": "Plaintiff",
-    "legal_representatives": "R Bebbe",
+    "representatives": "R Bebbe",
     "costs": "Costs of the Notice of Motion to be the Plaintiff's costs in the cause (p35)",
     "natural_person": "true",
     "relationship_to_deceased": "son",
@@ -18,7 +18,7 @@
   {
     "name": "Jane Doe",
     "role_in_trial": "Defendant",
-    "legal_representatives": "M Mouse",
+    "representatives": "M Mouse",
     "costs": "none",
     "natural_person": "true",
     "relationship_to_deceased": "wife",
