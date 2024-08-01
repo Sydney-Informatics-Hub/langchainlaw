@@ -126,10 +126,8 @@ class Classifier:
         dict by prompt label."""
         self.test = test
         case_id = casefile.stem
-        with open(casefile, "r") as file:
-            self.judgment = json.load(file)
+        self.load_judgment(casefile)
         results = {"file": str(casefile), "mnc": self.judgment["mnc"]}
-
         system_prompt = self.start_chat()
 
         if not self.test:
@@ -141,6 +139,15 @@ class Classifier:
                     case_id, prompt, no_cache=no_cache
                 )
         return results
+
+    def load_judgment(self, casefile):
+        """Loads a Path as a JSON casefile"""
+        with open(casefile, "r") as fh:
+            self.judgment = json.load(fh)
+
+    def show_prompt(self, prompt_name):
+        """This returns the named prompt without the judgement"""
+        return self.prompts[prompt_name].prompt
 
     def load_prompts(self, spreadsheet):
         """Load the prompts, system prompt and intro template from spreadsheet"""
