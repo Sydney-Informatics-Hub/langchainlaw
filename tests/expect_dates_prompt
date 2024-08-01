@@ -1,7 +1,7 @@
 Based on the metadata and judgment in the following JSON {"title": "Dummy", "uri": "/decision/1234556789abcdef0", "mnc": "This is a dummy case to feed to the classifier for tests"},       answer the following questions about the case:
 
       Q1: What is the filing date? DD/MM/YYYY
-      Q2: Does this judgment concern an interlocutory applicatidoes this judgment concern an interlocutory application? Answer "yes", "no" or "unclear" on?
+      Q2: Does this judgment concern an interlocutory applicatidoes this judgment concern an interlocutory application? Answer "yes", "no" or "unclear"
       Q3: If the judgment concerns an interlocutory application, what was the date of the application?  DD/MM/YYYY
 
       Return your answer as a JSON object, following this example:
