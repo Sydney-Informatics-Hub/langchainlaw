@@ -3,11 +3,18 @@ import time
 import sys
 import pandas as pd
 
+from typing import Generator
+from pathlib import Path
+
 from langchain.chat_models import ChatOpenAI
 from langchain.schema import HumanMessage, SystemMessage
 
 from langchainlaw.prompts import CasePrompt, CasePromptField, PromptException
 from langchainlaw.cache import Cache
+
+Results = str | dict[str, str]
+ResultsDict = dict[str, Results]
+FlatResultsDict = dict[str, str]
 
 RATE_LIMIT = 60
 
@@ -16,7 +23,7 @@ class Classifier:
     """Class which wraps up the case classifier. Config is a JSON object -
     see config.example.json"""
 
-    def __init__(self, config, quiet=False):
+    def __init__(self, config: dict[str, str | dict], quiet: bool = False):
         self.provider = config["provider"]
         self.spreadsheet = config["prompts"]
         try:
@@ -45,32 +52,32 @@ class Classifier:
         if cache_dir:
             self.cache = Cache(cache_dir)
 
-    def message(self, str):
+    def log(self, msg: str):
         """Print some progress info unless set to quiet mode"""
         if not self.quiet:
-            print(str)
+            print(msg)
 
     @property
-    def judgment(self):
+    def judgment(self) -> str:
         return self._judgment
 
     @judgment.setter
-    def judgment(self, v):
+    def judgment(self, v: str):
         self._judgment = v
         self._prompt_judgment = self.judgment_template.format(judgment=json.dumps(v))
 
-    def prompt(self, name):
+    def prompt(self, name: str) -> CasePrompt:
         """Returns a named prompt object"""
         return self.prompts[name]
 
-    def start_chat(self):
+    def start_chat(self) -> SystemMessage:
         return SystemMessage(content=self.system)
 
-    def next_prompt(self):
+    def next_prompt(self) -> Generator[CasePrompt, None, None]:
         for prompt_name in self.prompt_names:
             yield self.prompts[prompt_name]
 
-    def make_message(self, prompt):
+    def make_message(self, prompt: CasePrompt) -> HumanMessage:
         """Builds the complete prompt from the JSON-encoded judgment and
         the prompt questions (which also will include examples for the LLM to
         return)"""
@@ -83,7 +90,9 @@ class Classifier:
                 " calling make_message()"
             )
 
-    def run_prompt(self, case_id, prompt, no_cache=False):
+    def run_prompt(
+        self, case_id: str, prompt: CasePrompt, no_cache: bool = False
+    ) -> ResultsDict:
         """Actually send prompt to LLM, unless there's already a response in the
         cache or no_cache is True
 
@@ -101,19 +110,19 @@ class Classifier:
                 if self.cache and not no_cache:
                     response = self.cache.read(case_id, prompt.name)
                 if response is not None:
-                    self.message(f"[{case_id}] {prompt.name} - cached result")
+                    self.log(f"[{case_id}] {prompt.name} - cached result")
                 else:
-                    self.message(f"[{case_id}] {prompt.name} - mock result")
+                    self.log(f"[{case_id}] {prompt.name} - mock result")
                     response = prompt.mock_response()
             else:
                 if self.cache and not no_cache:
                     response = self.cache.read(case_id, prompt.name)
                 if response is not None:
-                    self.message(f"[{case_id}] {prompt.name} - cached result")
+                    self.log(f"[{case_id}] {prompt.name} - cached result")
                 else:
-                    self.message(f"[{case_id}] {prompt.name} - asking LLM")
+                    self.log(f"[{case_id}] {prompt.name} - asking LLM")
                     response = self.chat([message]).content
-                    self.message(f"[{case_id}] pausing for {self.rate_limit}")
+                    self.log(f"[{case_id}] pausing for {self.rate_limit}")
                     time.sleep(self.rate_limit)
         except Exception as e:
             return prompt.wrap_error(str(e))
@@ -121,7 +130,13 @@ class Classifier:
             self.cache.write(case_id, prompt.name, response)
         return prompt.parse_response(response)
 
-    def classify(self, casefile, test=False, prompts=None, no_cache=False):
+    def classify(
+        self,
+        casefile: Path,
+        test: bool = False,
+        prompts: list[str] = None,
+        no_cache: bool = False,
+    ) -> ResultsDict:
         """Run the classifier for a single case and returns the results as a
         dict by prompt label."""
         self.test = test
@@ -140,16 +155,16 @@ class Classifier:
                 )
         return results
 
-    def load_judgment(self, casefile):
+    def load_judgment(self, casefile: Path):
         """Loads a Path as a JSON casefile"""
         with open(casefile, "r") as fh:
             self.judgment = json.load(fh)
 
-    def show_prompt(self, prompt_name):
+    def show_prompt(self, prompt_name: str):
         """This returns the named prompt without the judgement"""
         return self.prompts[prompt_name].prompt
 
-    def load_prompts(self, spreadsheet):
+    def load_prompts(self, spreadsheet: str):
         """Load the prompts, system prompt and intro template from spreadsheet"""
 
         if spreadsheet is None:
@@ -167,7 +182,7 @@ class Classifier:
         for name in self.prompt_names:
             self.headers.extend(self.prompts[name].headers)
 
-    def load_prompt_sheet(self, spreadsheet):
+    def load_prompt_sheet(self, spreadsheet: str):
         """Loads the worksheet with prompt definitions from the spreadsheet"""
         prompts = pd.read_excel(spreadsheet, sheet_name="prompts", dtype=str).fillna("")
 
@@ -190,7 +205,7 @@ class Classifier:
         if first_row is not None:
             self.add_prompt(first_row, fields)
 
-    def add_prompt(self, row, fields):
+    def add_prompt(self, row, fields: list[CasePromptField]):
         """Converts a spreadsheet row into a CasePrompt and add it to the
         prompts dict"""
         repeats = 1
@@ -214,11 +229,11 @@ class Classifier:
             repeats=repeats,
         )
 
-    def collimate_one(self, name, results):
+    def collimate_one(self, name: str, results: ResultsDict):
         """Collimate one set of results."""
         return self.prompts[name].collimate(results)
 
-    def as_columns(self, results):
+    def as_columns(self, results: ResultsDict):
         """Take the dict of results returned by classify and aligns it
         with the column headers from the prompts"""
         cols = [results["file"], results["mnc"]]
@@ -226,7 +241,7 @@ class Classifier:
             cols.extend(self.collimate_one(name, results.get(name, None)))
         return cols
 
-    def as_dict(self, results):
+    def as_dict(self, results: ResultsDict) -> FlatResultsDict:
         """Takes the dict of results returned by classify and returns a
         flattened dict (no nesting, keys are the same as prompts.headers)"""
         d = {"file": results["file"], "mnc": results["mnc"]}
