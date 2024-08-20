@@ -25,3 +25,4 @@ jobs:
         uses: jpetrucciani/black-check@master
         with:
           path: '.'
+          python-version: "3.11.9"
