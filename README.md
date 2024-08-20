@@ -118,7 +118,7 @@ keys in the root directory of the repo.
 
 ## Prompts
 
-Prompts are configured using an Excel spreadsheet with the following sheets:
+Prompts are configured using an Excel spreadsheet - here is [an example](tests/sample_prompts.xlsx)
 
 ### system
 
