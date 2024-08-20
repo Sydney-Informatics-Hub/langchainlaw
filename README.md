@@ -120,6 +120,7 @@ keys in the root directory of the repo.
 
 Prompts are configured using an Excel spreadsheet - here is [an example](tests/sample_prompts.xlsx)
 
+
 ### system
 
 Cell A2 contains the system prompt: this is the message which is sent to the
@@ -146,33 +147,18 @@ Based on the metadata and judgment in the following JSON {judgment},
 Each request to the LLM is a set of related questions configured with the
 prompts worksheet. The columns of this sheet are:
 
-* Prompt_name - a unique name for this request
-* return_type - one of `json` or `json_multiple`
-* repeats - for `json_multiple` prompts, how many times to repeat the sets of questions in the results spreadsheet
-* prompt_question - the top-level question
-* return_instruction - text telling the LLM what sort of JSON structure to return
-* additional_instruction - additional instructions at the end of the question, if required
-* fields - a unique name for each sub-question, used as the keys in the JSON returned
-* question_description - the text of the sub-question
-* example - an example answer for the sub-question
+|Prompt_name|return_type|repeats|prompt_question|return_instructions|additional_instructions|fields|question_description|example|
+|---|---|---|---|---|---|---|---|---|
+|a unique name for this request|`json` or `json_multiple`|for `json_multiple` prompts, how many times to repeat the sets of questions in the results spreadsheet|the top-level question|text telling the LLM what sort of JSON structure to return|additional instructions at the end of the question, if required|a unique name for each sub-question, used as the keys in the JSON returned|the text of the sub-question|example|
 
 For example, in the sample spreadsheet, the prompt ```dates``` has the following
 spreadsheet values:
 
-* return_type: `json`
-* repeats: n/a
-* prompt_question: "answer the following questions about the case:"
-* return_instruction - "Return your answer as a JSON object, following this example:"
-* additional_instruction - none
-* filing_date:
-  * question_description: what is the filing date? DD/MM/YYYY
-  * example: "5/6/2010"
-* interlocutory:
-  * question_description: does this judgment concern an interlocutory application? Answer "yes", "no" or "unclear"
-  * example: "yes"
-* interlocutory_date:
-  * question_description: "if the judgment concerns an interlocutory application, what was the date of the application? DD/MM/YYYY"
-  * example: "4/3/2010"
+|Prompt_name|return_type|repeats|prompt_question|return_instructions|additional_instructions|fields|question_description|example|
+|---|---|---|---|---|---|---|---|---|
+|dates|json| |answer the following questions about the case:|Return your answer as a JSON object, following this example:| |filing_date|What is the filing date? DD/MM/YYYY|5/6/2010|
+|dates|    | |  | | |interlocutory|Does this judgment concern an interlocutory application? Answer "yes", "no" or "unclear"|yes|
+|dates|    | |  | | |interlocutory_date|If the judgment concerns an interlocutory application, what was the date of the application?  DD/MM/YYYY|4/3/2010|
 
 From these, the classifier will build the following prompt:
 
