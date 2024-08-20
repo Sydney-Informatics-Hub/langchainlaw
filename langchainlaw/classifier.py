@@ -23,7 +23,7 @@ class Classifier:
     """Class which wraps up the case classifier. Config is a JSON object -
     see config.example.json"""
 
-    def __init__(self, config: dict[str, str | dict], quiet: bool = False):
+    def __init__(self, config: dict[str, str | dict[str, str]], quiet: bool = False):
         self.provider = config["provider"]
         self.spreadsheet = config["prompts"]
         try:
@@ -31,8 +31,8 @@ class Classifier:
         except KeyError:
             print(f"Unknown provider: {self.provider}")
             sys.exit(-1)
-        self.prompts = {}
-        self.prompt_names = []
+        self.prompts: dict[str, CasePrompt] = {}
+        self.prompt_names: list[str] = []
         self.system = None
         self._judgment = None
         self._prompt_judgment = None
@@ -205,7 +205,7 @@ class Classifier:
         if first_row is not None:
             self.add_prompt(first_row, fields)
 
-    def add_prompt(self, row, fields: list[CasePromptField]):
+    def add_prompt(self, row: pd.Series, fields: list[CasePromptField]):
         """Converts a spreadsheet row into a CasePrompt and add it to the
         prompts dict"""
         repeats = 1

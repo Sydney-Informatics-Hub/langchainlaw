@@ -24,6 +24,8 @@ collate = "langchainlaw.collate:collate"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.1.1"
+mypy = "^1.11.1"
+pandas-stubs = "^2.2.2.240807"
 
 [build-system]
 requires = ["poetry-core"]

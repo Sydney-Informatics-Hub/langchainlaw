@@ -1,11 +1,7 @@
 {
-    "providers": {
-        "OpenAI": {
-            "api_key": "SECRET_GOES_HERE",
-            "organization": "ORG_KEY_GOES_HERE",
-            "model": "gpt-4o"
-        }
-    },
+    "api_key": "API_KEY_GOES_HERE",
+    "organization": "ORG_GOES_HERE",
+    "model": "gtp-4o",
     "provider": "OpenAI",
     "temperature": 0,
     "rate_limit": 15,

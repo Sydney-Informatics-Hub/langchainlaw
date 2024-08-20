@@ -6,7 +6,7 @@ import re
 JSON_QUOTE_RE = re.compile("```json(.*)```")
 
 
-def parse_llm_json(llm_json):
+def parse_llm_json(llm_json: str):
     """Deals with some of the models wrapping JSON in ```json ``` markup
     Raises a JSON decode error."""
     llm_oneline = llm_json.replace("\n", "")
@@ -109,7 +109,7 @@ class CasePrompt:
             }
         return {f"{self.name}:{f.field}": result.get(f.field) for f in self.fields}
 
-    def parse_response(self, response):
+    def parse_response(self, response: str):
         """Parses the string returned by the LLM, and also does some basic
         checking that the return types matched what the prompt expected"""
         if self.return_type == "text":
@@ -134,10 +134,10 @@ class CasePrompt:
             print(message)
             return message
 
-    def json_to_fields(self, o):
+    def json_to_fields(self, o: dict[str, str]):
         return {f"{self.name}:{f.field}": o.get(f.field, "") for f in self.fields}
 
-    def multi_json_to_fields(self, results):
+    def multi_json_to_fields(self, results: dict[str, str]):
         """returns a dict with keys like 'parties0:name' for multivalue fields"""
         return {
             f"{self.name}{i}:{f.field}": results[i].get(f.field, "")
@@ -145,7 +145,7 @@ class CasePrompt:
             for f in self.fields
         }
 
-    def wrap_error(self, msg):
+    def wrap_error(self, msg: str):
         if self.return_type == "text":
             return [msg]
         else:
