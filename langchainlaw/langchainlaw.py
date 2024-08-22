@@ -18,7 +18,7 @@ def cli():
         "--test",
         action="store_true",
         default=False,
-        help="Run without making calls to OpenAI, for testing prompts",
+        help="Generate prompts and write them out as text but don't call the LLM",
     )
     ap.add_argument(
         "--case",
@@ -32,21 +32,35 @@ def cli():
         type=str,
         help="Generate results from only one prompt",
     )
+    ap.add_argument(
+        "--no-cache",
+        action="store_true",
+        default=False,
+        help="Ignore cached results, always call the LLM",
+    )
 
     args = ap.parse_args()
 
     with open(args.config, "r") as cfh:
         config = json.load(cfh)
 
+    classifier = Classifier(config)
+
+    classifier.load_prompts(config["prompts"])
+
+    if args.test:
+        dump_prompts(classifier, config)
+        return
+
     workbook = Workbook()
     worksheet = workbook.active
 
-    classifier = Classifier(config)
-
+    prompt_filter = None
     if args.prompt:
-        if not classifier.prompts.prompt(args.prompt):
+        if args.prompt not in classifier.prompts:
             print(f"No prompt defined with name '{args.prompt}'")
             return
+        prompt_filter = [args.prompt]
 
     if args.prompt:
         headers = ["file", "mnc", args.prompt]
@@ -64,16 +78,27 @@ def cli():
         cases = Path(config["input"]).glob("*.json")
 
     for casefile in cases:
-        results = classifier.classify(casefile, test=args.test, one_prompt=args.prompt)
+        results = classifier.classify(
+            casefile, test=args.test, prompts=prompt_filter, no_cache=args.no_cache
+        )
         cols = classifier.as_columns(results)
         worksheet.append(cols)
 
-    spreadsheet = config["output"]
-    if args.test:
-        print(f"Writing sample prompts to {spreadsheet}")
-    else:
-        print(f"Writing results to {spreadsheet}")
+    spreadsheet = config.get("output", "results.xlsx")
+    print(f"Writing results to {spreadsheet}")
     workbook.save(spreadsheet)
+
+
+def dump_prompts(classifier, config):
+    """Writes the prompts which would be sent to the LLM to a text file"""
+
+    prompts_file = config.get("test_prompts", "test_prompts.txt")
+    with open(prompts_file, "w") as pfh:
+        for prompt in classifier.next_prompt():
+            pfh.write(f"Prompt: {prompt.name}\n\n")
+            pfh.write(classifier.show_prompt(prompt.name))
+            pfh.write("\n\n")
+    print(f"Wrote sample prompts to {prompts_file}")
 
 
 if __name__ == "__main__":

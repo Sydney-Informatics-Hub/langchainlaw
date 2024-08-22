@@ -39,10 +39,11 @@ is configured using a JSON file with the following format:
     "provider": "OpenAI",
     "temperature": 0,
     "rate_limit": 15,
+    "prompts": "./tests/sample_prompts.xlsx",
     "input": "./input/",
     "output": "./output/results.xlsx",
     "cache": "./output/cache",
-    "prompts": "./prompts.yaml"
+    "test_prompts": "./outputs/test_prompts.txt"
 }
 ```
 
@@ -52,15 +53,11 @@ add your API keys.
 The configurations for files and directories for input and output are as
 follows:
 
+* `prompts`: spreadsheet with the prompt questions - see below for format
 * `input`: all .json files here will be read as cases
 * `output`: results are written to this spreadsheet, one line per case
 * `cache`: a directory will be created in this for each case, and results from the LLM for each prompt will be written to it in a file with that prompt's name.
-
-The prompts.yaml file contains the prompts used to ask the LLM to answer
-questions about the judgment.  This repository contains two prompts files:
-
-* `prompts.yaml`: inefficient, sends a request for each question
-* `prompts_grouped.yaml`: groups the questions into 7 requests
+* `test_prompts`: text file to write all prompts when using `--test`
 
 To run the `classify` command, use `poetry run`:
 
@@ -68,9 +65,22 @@ To run the `classify` command, use `poetry run`:
 poetry run classify --config config.json
 ```
 
-If you re-run the classifier, it will look in the cache for each case / prompt combination and return a cached result if it exists, rather than going to the LLM. For now, the only way to stop caching is to delete the cache file or directory for a prompt or case.
+If you re-run the classifier, it will look in the cache for each case / prompt
+combination and return a cached result if it exists, rather than going to the
+LLM. To force the classifier to go to the LLM even if a cached result exists,
+use the `--no-cache` flag.
 
-GPT-4o sometimes adds 'notes' to its output even when instructed to return JSON - these notes are also saved to the cache, although they are ignored when building the results spreadsheet.
+Command line options for the command-line tool:
+
+* `--config FILE` - specify the JSON config file
+* `--test` - generate prompts and write them to the `test_prompts` file but don't call the LLM for classification
+* `--case CASEFILE` - run the classifier for a single case, specified by its JSON filename
+* `--prompt PROMPT` - run the classifier for only one prompt, specified by its name in the spreadsheet
+* `--no-cache` - call the LLM even if there is a cached result for a prompt
+
+GPT-4o sometimes adds 'notes' to its output even when instructed to return
+JSON - these notes are also saved to the cache, although they are ignored when
+building the results spreadsheet.
 
 ## API
 
@@ -86,6 +96,8 @@ with open("config.json", "r") as cfh:
 	config = json.load(cfh)
 
 classifier = Classifier(config)
+
+classifier.load_prompts(config["prompts"])
 
 # classify a single case
 
@@ -111,71 +123,70 @@ keys in the root directory of the repo.
 
 ## Prompts
 
-The following is an example of one of the prompts from `prompts_grouped.yaml`.
+Prompts are configured using an Excel spreadsheet - here is [an example](tests/sample_prompts.xlsx)
 
-This asks three questions about the filing date and any interlocutory application date. You can adjust the prompt text by editing the value of the `prompt` section.
 
-Note that you need to make sure that the `fields` section has the same list of field names as the JSON example in the prompt.
+### system
 
-```
-  - name: dates
-    return_type: json
-    fields:
-      - filing_date
-      - interlocutory
-      - interlocutory_date
-    prompt: |
-      answer the following questions about the case:
-
-      Q1: what is the filing date? DD/MM/YYYY
-      Q2: does this judgment concern an interlocutory application? Answer "yes", "no" or "unclear" 
-      Q3: if the judgment concerns an interlocutory application, what was the date of the application? DD/MM/YYYY
-
-      Return your answer as a JSON object, following this example:
-
-        {{
-          "filing_date": "5/6/2010",
-          "interlocutory": "yes",
-          "interlocutory_date": "4/3/2010"
-        }}
-```
-
-It is possible to construct prompts which ask for multiple sets of JSON results: an example of this can be seen in the `parties` prompt:
+Cell A2 contains the system prompt: this is the message which is sent to the
+LLM as a System prompt and is used to set the persona for the rest of the chat.
+For example:
 
 ```
-  - name: parties
-    return_type: json_multiple
-    fields:
-      - name
-      - role_in_trial
-      - representatives
-      - costs
-      - natural_person
-      - relationship_to_party
-      - is_dependant
-      - misconduct
-      - estranged
-      - financial
-      - family
-      - illegal
-      - contingent
-    repeats: 6
-    prompt: [...]
+You are a legal research assistant helping an academic researcher to answer questions about a public judgment of a decision in inheritance law. You will be provided with the judgment and metadata as a JSON document. Please answer the questions about the judgment based only on information contained in the judgment. Where your answer comes from a specific paragraph in the judgment, provide the paragraph number as part of your answer. If you cannot answer any of the questions based on the judgment or metadata, do not make up
+  information, but instead write ""answer not found"""
 ```
 
-Where prompts have a `return_type` of `json_multiple`, the results will be 
-written to the spreadsheet one set of columns at a time, with headers as follows:
+### intro 
+
+Cell A2 contains the template which is used to start each chat message. The string {judgment} is expanded to the JSON of the case being classified.
+
 
 ```
-parties:1:name
-parties:1:role_in_trial
-parties:1:representatives
-[...]
-parties:2:name
-parties:2:role_in_trial
-parties:2:representatives
+Based on the metadata and judgment in the following JSON {judgment}, 
+
 ```
 
-The maximum number of sets of headers written to the spreadsheet is controlled
-by the `repeats` parameter. Note that if there are more than `repeats` values
-returned by a prompt, all of the values will be written to the spreadsheet.
+### prompts
+
+Each request to the LLM is a set of related questions configured with the
+prompts worksheet. The columns of this sheet are:
+
+|Prompt_name|return_type|repeats|prompt_question|return_instructions|additional_instructions|fields|question_description|example|
+|---|---|---|---|---|---|---|---|---|
+|prompt id|`json` or `json_multiple`|repeat `json_multiple` this many times|top-level question|description of JSON structure|additional instructions if required|unique field name for each sub-question|text of the sub-question|example answer|
+
+For example, in the sample spreadsheet, the prompt ```dates``` has the following
+spreadsheet values:
+
+|Prompt_name|return_type|repeats|prompt_question|return_instructions|additional_instructions|fields|question_description|example|
+|---|---|---|---|---|---|---|---|---|
+|dates|json| |answer the following questions about the case:|Return your answer as a JSON object, following this example:| |filing_date|What is the filing date? DD/MM/YYYY|5/6/2010|
+|dates|    | |  | | |interlocutory|Does this judgment concern an interlocutory application? Answer "yes", "no" or "unclear"|yes|
+|dates|    | |  | | |interlocutory_date|If the judgment concerns an interlocutory application, what was the date of the application?  DD/MM/YYYY|4/3/2010|
+
+From these, the classifier will build the following prompt:
+
+```
+  answer the following questions about the case:
+
+  Q1: what is the filing date? DD/MM/YYYY
+  Q2: does this judgment concern an interlocutory application? Answer "yes", "no" or "unclear" 
+  Q3: if the judgment concerns an interlocutory application, what was the date of the application? DD/MM/YYYY
+
+  Return your answer as a JSON object, following this example:
+    {{
+      "filing_date": "5/6/2010",
+      "interlocutory": "yes",
+      "interlocutory_date": "4/3/2010"
+    }}
+```
+
+Note that the example JSON is constructed automatically from the example
+answers in the "example" column.
+
+
+## Acknowledgements
+
+This project is partially funded by a 2022 University of Sydney Research
+Accelerator (SOAR) Prize awarded to Ben Chen.
