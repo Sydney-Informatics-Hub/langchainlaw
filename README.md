@@ -149,7 +149,7 @@ prompts worksheet. The columns of this sheet are:
 
 |Prompt_name|return_type|repeats|prompt_question|return_instructions|additional_instructions|fields|question_description|example|
 |---|---|---|---|---|---|---|---|---|
-|a unique name for this request|`json` or `json_multiple`|for `json_multiple` prompts, how many times to repeat the sets of questions in the results spreadsheet|the top-level question|text telling the LLM what sort of JSON structure to return|additional instructions at the end of the question, if required|a unique name for each sub-question, used as the keys in the JSON returned|the text of the sub-question|example|
+|prompt id|`json` or `json_multiple`|repeat `json_multiple` this many times|top-level question|description of JSON structure|additional instructions if required|unique field name for each sub-question|text of the sub-question|example answer|
 
 For example, in the sample spreadsheet, the prompt ```dates``` has the following
 spreadsheet values:
