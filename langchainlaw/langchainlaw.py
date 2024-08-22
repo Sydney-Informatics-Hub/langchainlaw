@@ -44,12 +44,16 @@ def cli():
     with open(args.config, "r") as cfh:
         config = json.load(cfh)
 
-    workbook = Workbook()
-    worksheet = workbook.active
-
     classifier = Classifier(config)
 
     classifier.load_prompts(config["prompts"])
+
+    if args.test:
+        dump_prompts(classifier, config)
+        return
+
+    workbook = Workbook()
+    worksheet = workbook.active
 
     prompt_filter = None
     if args.prompt:
@@ -80,12 +84,21 @@ def cli():
         cols = classifier.as_columns(results)
         worksheet.append(cols)
 
-    spreadsheet = config["output"]
-    if args.test:
-        print(f"Writing sample prompts to {spreadsheet}")
-    else:
-        print(f"Writing results to {spreadsheet}")
+    spreadsheet = config.get("output", "results.xlsx")
+    print(f"Writing results to {spreadsheet}")
     workbook.save(spreadsheet)
+
+
+def dump_prompts(classifier, config):
+    """Writes the prompts which would be sent to the LLM to a text file"""
+
+    prompts_file = config.get("test_prompts", "test_prompts.txt")
+    with open(prompts_file, "w") as pfh:
+        for prompt in classifier.next_prompt():
+            pfh.write(f"Prompt: {prompt.name}\n\n")
+            pfh.write(classifier.show_prompt(prompt.name))
+            pfh.write("\n\n")
+    print(f"Wrote sample prompts to {prompts_file}")
 
 
 if __name__ == "__main__":
