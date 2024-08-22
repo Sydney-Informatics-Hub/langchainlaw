@@ -18,7 +18,7 @@ def cli():
         "--test",
         action="store_true",
         default=False,
-        help="Run without making calls to OpenAI, for testing prompts",
+        help="Generate prompts and write them out as text but don't call the LLM",
     )
     ap.add_argument(
         "--case",
@@ -31,6 +31,12 @@ def cli():
         default="",
         type=str,
         help="Generate results from only one prompt",
+    )
+    ap.add_argument(
+        "--no-cache",
+        action="store_true",
+        default=False,
+        help="Ignore cached results, always call the LLM",
     )
 
     args = ap.parse_args()
@@ -68,7 +74,9 @@ def cli():
         cases = Path(config["input"]).glob("*.json")
 
     for casefile in cases:
-        results = classifier.classify(casefile, test=args.test, prompts=prompt_filter)
+        results = classifier.classify(
+            casefile, test=args.test, prompts=prompt_filter, no_cache=args.no_cache
+        )
         cols = classifier.as_columns(results)
         worksheet.append(cols)
 
