@@ -39,10 +39,11 @@ is configured using a JSON file with the following format:
     "provider": "OpenAI",
     "temperature": 0,
     "rate_limit": 15,
+    "prompts": "./tests/sample_prompts.xlsx",
     "input": "./input/",
     "output": "./output/results.xlsx",
     "cache": "./output/cache",
-    "prompts": "./tests/sample_prompts.xlsx"
+    "test_prompts": "./outputs/test_prompts.txt"
 }
 ```
 
@@ -52,15 +53,11 @@ add your API keys.
 The configurations for files and directories for input and output are as
 follows:
 
+* `prompts`: spreadsheet with the prompt questions - see below for format
 * `input`: all .json files here will be read as cases
 * `output`: results are written to this spreadsheet, one line per case
 * `cache`: a directory will be created in this for each case, and results from the LLM for each prompt will be written to it in a file with that prompt's name.
-
-The prompts.yaml file contains the prompts used to ask the LLM to answer
-questions about the judgment.  This repository contains two prompts files:
-
-* `prompts.yaml`: inefficient, sends a request for each question
-* `prompts_grouped.yaml`: groups the questions into 7 requests
+* `test_prompts`: text file to write all prompts when using `--test`
 
 To run the `classify` command, use `poetry run`:
 
@@ -70,8 +67,16 @@ poetry run classify --config config.json
 
 If you re-run the classifier, it will look in the cache for each case / prompt
 combination and return a cached result if it exists, rather than going to the
-LLM. For now, the only way to stop caching is to delete the cache file or
-directory for a prompt or case.
+LLM. To force the classifier to go to the LLM even if a cached result exists,
+use the `--no-cache` flag.
+
+Command line options for the command-line tool:
+
+* `--config FILE` - specify the JSON config file
+* `--test` - generate prompts and write them to the `test_prompts` file but don't call the LLM for classification
+* `--case CASEFILE` - run the classifier for a single case, specified by its JSON filename
+* `--prompt PROMPT` - run the classifier for only one prompt, specified by its name in the spreadsheet
+* `--no-cache` - call the LLM even if there is a cached result for a prompt
 
 GPT-4o sometimes adds 'notes' to its output even when instructed to return
 JSON - these notes are also saved to the cache, although they are ignored when
