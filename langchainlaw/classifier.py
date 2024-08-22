@@ -12,9 +12,7 @@ from langchain.schema import HumanMessage, SystemMessage
 from langchainlaw.prompts import CasePrompt, CasePromptField, PromptException
 from langchainlaw.cache import Cache
 
-Results = str | dict[str, str]
-ResultsDict = dict[str, Results]
-FlatResultsDict = dict[str, str]
+from langchainlaw.prompts import ResultsDict, FlatResultsDict
 
 RATE_LIMIT = 60
 

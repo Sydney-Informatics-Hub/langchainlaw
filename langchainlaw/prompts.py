@@ -5,10 +5,19 @@ import re
 
 JSON_QUOTE_RE = re.compile("```json(.*)```")
 
+# types for annotations - NOTE - these don't typecheck with mypy
 
-def parse_llm_json(llm_json):
+Results = str | dict[str, str]
+ResultsDict = dict[str, Results]
+FlatResultsDict = dict[str, str]
+
+
+def parse_llm_json(llm_json: str):
     """Deals with some of the models wrapping JSON in ```json ``` markup
-    Raises a JSON decode error."""
+    Raises a JSON decode error.
+
+    No type hint for the return value because it's parsed JSON and the type
+    hint would have to be crazy"""
     llm_oneline = llm_json.replace("\n", "")
     match = JSON_QUOTE_RE.search(llm_oneline)
     if match:
@@ -22,7 +31,7 @@ class PromptException(Exception):
     pass
 
 
-def random_para_ref():
+def random_para_ref() -> str:
     return [
         f"(p{random.randint(1, 100)})",
         f"(pp{random.randint(1, 5)}-{random.randint(6, 10)})",
@@ -47,7 +56,7 @@ class CasePrompt:
     repeats: int = 1
 
     @property
-    def headers(self):
+    def headers(self) -> list[str]:
         if self.fields is None:
             return [self.name]
         else:
@@ -61,7 +70,7 @@ class CasePrompt:
                 return [f"{self.name}:{f.field}" for f in self.fields]
 
     @property
-    def prompt(self):
+    def prompt(self) -> str:
         prompt = f"      {self.question}\n\n"
         i = 1
         for f in self.fields:
@@ -82,7 +91,7 @@ class CasePrompt:
             prompt += f"      {self.additional_instruction}\n\n"
         return prompt
 
-    def collimate(self, result):
+    def collimate(self, result: ResultsDict) -> FlatResultsDict:
         """Take a results set for this prompt and return an array of the
         results as columns."""
         if self.fields is None:
@@ -95,7 +104,7 @@ class CasePrompt:
             return ["" for _ in self.fields]
         return [result.get(f.field) for f in self.fields]
 
-    def flatten(self, result):
+    def flatten(self, result: ResultsDict) -> FlatResultsDict:
         """Take a results set for this prompt and return a dict by either
         name, name:field or name:n:field depending on whether the return type
         is str / single json / multiple json"""
@@ -109,7 +118,7 @@ class CasePrompt:
             }
         return {f"{self.name}:{f.field}": result.get(f.field) for f in self.fields}
 
-    def parse_response(self, response):
+    def parse_response(self, response: str):
         """Parses the string returned by the LLM, and also does some basic
         checking that the return types matched what the prompt expected"""
         if self.return_type == "text":
@@ -145,7 +154,7 @@ class CasePrompt:
             for f in self.fields
         }
 
-    def wrap_error(self, msg):
+    def wrap_error(self, msg: str):
         if self.return_type == "text":
             return [msg]
         else:
