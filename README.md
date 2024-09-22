@@ -188,8 +188,8 @@ Note that the example JSON is constructed automatically from the example
 answers in the "example" column.
 
 
-## Batch mode
-The classifier can "send asynchronous groups of requests with 50% lower costs, a separate pool of significantly higher rate limits, and a clear 24-hour turnaround time" (see https://platform.openai.com/docs/guides/batch).
+## Batch requests
+The classifier can take advantage of OpenAI's Batch API. Batch requests are "asynchronous groups of requests with 50% lower costs, a separate pool of significantly higher rate limits, and a clear 24-hour turnaround time" (see https://platform.openai.com/docs/guides/batch).
 
 ### send a batch request for a single case
 
@@ -197,7 +197,7 @@ The classifier can "send asynchronous groups of requests with 50% lower costs, a
 classifier.batch_send("cases/123456789abcdef0.json")
 ```
 
-Each batch request contains all prompts for one single case.
+One batch request is made for one single case. Each line in the JSONL for the request contains one group of questions provided in the prompts spreadsheet.
 
 ### check the status of a batch request for a single case
 
@@ -205,7 +205,7 @@ Each batch request contains all prompts for one single case.
 status_output_file_id = classifier.batch_check("cases/123456789abcdef0.json")
 ```
 
-classifier.batch_check() returns a dictionary of status and output file id. 
+```classifier.batch_check``` returns a dictionary of status and output file id. 
 
 ### get the output for a completed batch request for a single case
 
