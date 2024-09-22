@@ -43,6 +43,7 @@ is configured using a JSON file with the following format:
     "input": "./input/",
     "output": "./output/results.xlsx",
     "cache": "./output/cache",
+    "batch_records": "./batch_records.xlsx",
     "test_prompts": "./outputs/test_prompts.txt"
 }
 ```
@@ -57,6 +58,7 @@ follows:
 * `input`: all .json files here will be read as cases
 * `output`: results are written to this spreadsheet, one line per case
 * `cache`: a directory will be created in this for each case, and results from the LLM for each prompt will be written to it in a file with that prompt's name.
+* `batch_records`: spreadsheet to keep track of batch requests
 * `test_prompts`: text file to write all prompts when using `--test`
 
 To run the `classify` command, use `poetry run`:
@@ -185,6 +187,33 @@ From these, the classifier will build the following prompt:
 Note that the example JSON is constructed automatically from the example
 answers in the "example" column.
 
+
+## Batch mode
+The classifier can "send asynchronous groups of requests with 50% lower costs, a separate pool of significantly higher rate limits, and a clear 24-hour turnaround time" (see https://platform.openai.com/docs/guides/batch).
+
+### send a batch request for a single case
+
+classifier.batch_send("cases/123456789abcdef0.json")
+
+Each batch request contains all prompts for one single case.
+
+### check the status of a batch request for a single case
+
+status_output_file_id = classifier.batch_check("cases/123456789abcdef0.json")
+
+classifier.batch_check() returns a dictionary of status and output file id. 
+
+### get the output for a completed batch request for a single case
+
+output = classifier.batch_get("cases/123456789abcdef0.json")
+
+### keep track of batch requests
+
+The batch_records spreadsheet keeps track of batch requests. Both classifier.batch_send() and classifier.batch_check() update this spreadsheet, while classifier.batch_get() uses this spreadsheet to map a completed output to the relevant case.
+
+If multiple batch requests have been submitted for the same case, classifier.batch_check() returns the status and output file id of the most recent request. Similarly, classifier.batch_get() retrieves the output of the most recent completed request. 
+
+To check the status or get the output of an earlier request, one only needs to amend the batch_records spreadsheet.  
 
 ## Acknowledgements
 
