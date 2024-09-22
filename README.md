@@ -193,19 +193,25 @@ The classifier can "send asynchronous groups of requests with 50% lower costs, a
 
 ### send a batch request for a single case
 
+```
 classifier.batch_send("cases/123456789abcdef0.json")
+```
 
 Each batch request contains all prompts for one single case.
 
 ### check the status of a batch request for a single case
 
+```
 status_output_file_id = classifier.batch_check("cases/123456789abcdef0.json")
+```
 
 classifier.batch_check() returns a dictionary of status and output file id. 
 
 ### get the output for a completed batch request for a single case
 
+```
 output = classifier.batch_get("cases/123456789abcdef0.json")
+```
 
 ### keep track of batch requests
 
