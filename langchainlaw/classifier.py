@@ -126,9 +126,6 @@ class Classifier:
                     self.log(f"[{case_id}] {prompt.name} - cached result")
                 else:
                     self.log(f"[{case_id}] {prompt.name} - asking LLM")
-                    response = self.chat([message]).content
-                    self.log(f"[{case_id}] response type == {type(response)}")
-                    self.log(f"[{case_id}] response == {response}")
                     self.log(f"[{case_id}] pausing for {self.rate_limit}")
                     time.sleep(self.rate_limit)
         except Exception as e:
