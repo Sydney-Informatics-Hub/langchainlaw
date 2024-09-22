@@ -215,7 +215,11 @@ output = classifier.batch_get("cases/123456789abcdef0.json")
 
 ### keep track of batch requests
 
-The batch_records spreadsheet keeps track of batch requests. Both ```classifier.batch_send``` and ```classifier.batch_check``` update this spreadsheet, while ```classifier.batch_get``` uses this spreadsheet to map a completed output to the relevant case.
+The batch_records spreadsheet keeps track of batch requests. Each of ```classifier.batch_send```, ```classifier.batch_check``` and ```classifier.batch_get``` uses and updates this spreadsheet. The columns of this spreadsheet are as follows:
+
+|submission_time|status|batch_id|input_file_id|output_file_id|case_id|
+|---|---|---|---|---|---|
+|datetime object as a string|API generated string|API generated string commencing "batch_"|API generated string commencing "file_"|API generated string commencing "file_"|stem of file path as a string|
 
 If multiple batch requests have been submitted for the same case, ```classifier.batch_check``` returns the status and output file id of the most recent request. Similarly, ```classifier.batch_get``` retrieves the output of the most recent completed request. 
 
