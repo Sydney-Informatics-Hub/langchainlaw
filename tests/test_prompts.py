@@ -1,7 +1,9 @@
 import json
 import pytest
 import random
-from langchain.schema import HumanMessage
+#from langchain.schema import HumanMessage #No longer work as of 20251210, see Tariq-Imran at https://github.com/langchain-ai/langchain/issues/8527
+from langchain_core.messages import HumanMessage #Added non 20251210
+
 from langchainlaw.prompts import parse_llm_json, PromptException
 from langchainlaw.classifier import Classifier
 

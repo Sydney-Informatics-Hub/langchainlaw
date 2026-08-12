@@ -15,7 +15,7 @@ Get a copy of the repo using `git clone` and then set up your Python environment
 and dependencies with `poetry install`:
 
 ```
-git clone git@github.com:Sydney-Informatics-Hub/langchainlaw.git
+git clone https://github.com/nehcneb/langchainlaw.git
 cd langchainlaw
 poetry install
 ```
@@ -23,8 +23,9 @@ poetry install
 ## Command Line
 
 The `classify` command will classify a directory containing judgments in the
-json format output by the [nswcaselaw](https://github.com/Sydney-Informatics-Hub/nswcaselaw) library,
-caching the LLM responses and writing the results out to a spreadsheet. It
+JSON format containing the key `file` (for example, judgments output by the [nswcaselaw](https://github.com/Sydney-Informatics-Hub/nswcaselaw) library). This command will cache the LLM responses and write the results out to a spreadsheet. 
+
+For [chat models](https://platform.openai.com/docs/models) such as GPT-4o, the classifier
 is configured using a JSON file with the following format:
 
 ```
@@ -43,12 +44,15 @@ is configured using a JSON file with the following format:
     "input": "./input/",
     "output": "./output/results.xlsx",
     "cache": "./output/cache",
+    "batch_records": "./batch_records.xlsx",
     "test_prompts": "./outputs/test_prompts.txt"
 }
 ```
 
 You should make a copy of `config.example.json` as `config.json` before you
 add your API keys.
+
+For [reasoning models](https://platform.openai.com/docs/models) such as 3o-mini, the `temperature` parameter is not supported as of 13 April 2025. You can specify the `reasoning_effort` parameter as one of `low`, `medium`, and `high` instead (see, for example, `config.example.reasoning.json`).
 
 The configurations for files and directories for input and output are as
 follows:
@@ -57,6 +61,7 @@ follows:
 * `input`: all .json files here will be read as cases
 * `output`: results are written to this spreadsheet, one line per case
 * `cache`: a directory will be created in this for each case, and results from the LLM for each prompt will be written to it in a file with that prompt's name.
+* `batch_records`: spreadsheet to keep track of batch requests
 * `test_prompts`: text file to write all prompts when using `--test`
 
 To run the `classify` command, use `poetry run`:
@@ -185,6 +190,50 @@ From these, the classifier will build the following prompt:
 Note that the example JSON is constructed automatically from the example
 answers in the "example" column.
 
+
+## Batch requests
+The classifier can take advantage of OpenAI's Batch API. Batch requests are "asynchronous groups of requests with 50% lower costs, a separate pool of significantly higher rate limits, and a clear 24-hour turnaround time" (see https://platform.openai.com/docs/guides/batch).
+
+### send a batch request for a single case
+
+```
+classifier.batch_send("cases/123456789abcdef0.json")
+```
+
+One batch request is made for one single case. Each line in the JSONL for the request contains one group of questions provided in the prompts spreadsheet.
+
+
+If you re-run ```classifier.batch_send```, the classifier will look for an earlier batch request first, and send a new batch request if and only if no such earlier batch request exists. To force the classifier to send a new batch request to the LLM even if an earlier batch request exists, use the `--no-cache` flag. For example:
+```
+classifier.batch_send("cases/123456789abcdef0.json", no_cache=True)
+```
+
+
+### check the status of a batch request for a single case
+
+```
+status_output_file_id = classifier.batch_check("cases/123456789abcdef0.json")
+```
+
+```classifier.batch_check``` returns a dictionary of status and output file id. 
+
+### get the output for a completed batch request for a single case
+
+```
+output = classifier.batch_get("cases/123456789abcdef0.json")
+```
+
+### keep track of batch requests
+
+The batch_records spreadsheet keeps track of batch requests. Each of ```classifier.batch_send```, ```classifier.batch_check``` and ```classifier.batch_get``` uses and updates this spreadsheet. The columns of this spreadsheet are as follows:
+
+|submission_time|status|batch_id|input_file_id|output_file_id|case_id|
+|---|---|---|---|---|---|
+|datetime object as a string|API generated string|API generated string commencing "batch_"|API generated string commencing "file_"|API generated string commencing "file_"|stem of file path as a string|
+
+If multiple batch requests have been submitted for the same case, ```classifier.batch_check``` returns the status and output file id of the most recent request. Similarly, ```classifier.batch_get``` retrieves the output of the most recent completed request. 
+
+To check the status or get the output of an earlier request, one only needs to amend the batch_records spreadsheet.  
 
 ## Acknowledgements
 

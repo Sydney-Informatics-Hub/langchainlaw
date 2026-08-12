@@ -1,0 +1,17 @@
+{
+    "providers": {
+        "OpenAI": {
+            "api_key": "SECRET_GOES_HERE",
+            "organization": "ORG_KEY_GOES_HERE",
+            "model": "o3-mini"
+        }
+    },
+    "provider": "OpenAI",
+    "reasoning_effort": "medium",
+    "rate_limit": 15,
+    "input": "./input/",
+    "output": "./output/results.xlsx",
+    "cache": "./output/cache",
+    "prompts": "./tests/sample_prompts.xlsx",
+    "test_prompts": "./output/test_prompts.txt"
+}

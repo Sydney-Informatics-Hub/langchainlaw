@@ -6,16 +6,48 @@ import pandas as pd
 from typing import Generator
 from pathlib import Path
 
-from langchain.chat_models import ChatOpenAI
-from langchain.schema import HumanMessage, SystemMessage
+from langchain_openai import ChatOpenAI #Importing ChatOpenAI from langchain_openai instead of langchain.chat_models because langchain.chat_models does not support reasoning models as of 20250413
+#from langchain.schema import HumanMessage, SystemMessage #No longer work as of 20251210, see Tariq-Imran at https://github.com/langchain-ai/langchain/issues/8527
+from langchain_core.messages import HumanMessage, SystemMessage #Added non 20251210
 
 from langchainlaw.prompts import CasePrompt, CasePromptField, PromptException
 from langchainlaw.cache import Cache
 
 from langchainlaw.prompts import ResultsDict, FlatResultsDict
 
+import openai
+from datetime import datetime
+
 RATE_LIMIT = 60
 
+#Specify reasoning models from OpenAI
+REASONING_MODELS = ['o1',
+                    'o1-2024-12-17',
+                    'o1-pro',
+                    'o1-pro-2025-03-19',
+                    'o3-mini',
+                    'o3-mini-2025-01-31',
+                    'o3',
+                    'o3-2025-04-16',
+                    'o4-mini',
+                    'o4-mini-2025-04-16',
+                    'gpt-5.2-pro',
+                    'gpt-5.2-codex',
+                    'gpt-5.2',
+                    'gpt-5.1-codex-max',
+                    'gpt-5.1-codex',
+                    'gpt-5.1',
+                    'gpt-5-mini',
+                    'gpt-5-nano',
+                    'gpt-5.4',                    
+                    'gpt-5.4-mini',
+                    'gpt-5.4-nano',
+                    'gpt-5.5',
+                    'gpt-5.5-pro',
+                    'gpt-5.6-sol',
+                    'gpt-5.6-terra',
+                    'gpt-5.6-luna',
+                    ]
 
 class Classifier:
     """Class which wraps up the case classifier. Config is a JSON object -
@@ -38,12 +70,31 @@ class Classifier:
         self.test = False
         self.headers = None
         self.quiet = quiet
-        self.chat = ChatOpenAI(
+        self.api_key = self.api_cf["api_key"]
+        self.model = self.api_cf["model"]
+
+        if self.model in REASONING_MODELS:
+            #For reasoning models, 'temperature' parameter not supported as of 20250413. Hence it will be defaulted to 1.
+            self.reasoning_effort = config["reasoning_effort"]
+            self.chat = ChatOpenAI(
             model_name=self.api_cf["model"],
             openai_api_key=self.api_cf["api_key"],
             openai_organization=self.api_cf["organization"],
-            temperature=config["temperature"],
-        )
+            reasoning_effort = self.reasoning_effort,
+            #temperature=1,
+            )
+        
+        else:
+            self.temperature = config["temperature"]
+            self.chat = ChatOpenAI(
+            model_name=self.api_cf["model"],
+            openai_api_key=self.api_cf["api_key"],
+            openai_organization=self.api_cf["organization"],
+            temperature=self.temperature,
+            )
+
+        self.df_batch_records = pd.read_excel(config["batch_records"], dtype=str).fillna("")
+        self.batch_records_name = config["batch_records"]
         self.rate_limit = config.get("rate_limit", RATE_LIMIT)
         cache_dir = config.get("cache", None)
         self.cache = None
@@ -119,7 +170,8 @@ class Classifier:
                     self.log(f"[{case_id}] {prompt.name} - cached result")
                 else:
                     self.log(f"[{case_id}] {prompt.name} - asking LLM")
-                    response = self.chat([message]).content
+                    #response = self.chat([message]).content #Not longer work as of 20251210
+                    response = self.chat.invoke([message]).content #Added on 20251210
                     self.log(f"[{case_id}] pausing for {self.rate_limit}")
                     time.sleep(self.rate_limit)
         except Exception as e:
@@ -144,7 +196,8 @@ class Classifier:
         system_prompt = self.start_chat()
 
         if not self.test:
-            self.chat([system_prompt])
+            #self.chat([system_prompt]) #Not longer work as of 20251210
+            self.chat.invoke([system_prompt]) #Added on 20251210
 
         for prompt in self.next_prompt():
             if not prompts or prompt.name in prompts:
@@ -157,6 +210,10 @@ class Classifier:
         """Loads a Path as a JSON casefile"""
         with open(casefile, "r") as fh:
             self.judgment = json.load(fh)
+            
+        #If no 'mnc' key in casefile, then add blank 'mnc'
+        if 'mnc' not in self.judgment.keys():
+            self.judgment.update({'mnc': ''})
 
     def show_prompt(self, prompt_name: str):
         """This returns the named prompt without the judgement"""
@@ -248,3 +305,300 @@ class Classifier:
             for k, v in r.items():
                 d[k] = v
         return d
+
+    def custom_id(
+        self, 
+        case_id: str, 
+        prompt: CasePrompt, 
+    ) -> str:
+        """Generate a custom id for a case and a prompt (capturing a group for questions) for a line in a JSONL for a batch request.
+        custom_id is used to map a line in an output JSONL to a case and a prompt. It is needed because the output line order may not match the input line order. 
+        custom_id == case_id:prompt.name.
+        """
+        custom_id=f"{case_id}:{prompt.name}"
+        return custom_id
+        
+    def batch_input_line(
+        self, 
+        case_id: str, 
+        prompt: CasePrompt, 
+    ) -> dict:
+        """Create one line of a JSONL which will be submitted to LLM as a batch.
+
+        Each batch request is confined to one single case. Each line of the JSONL for this batch input captures one prompt for that case.
+
+        batch_input_dict == one line of the JSONL to be submitted to the LLM (json)
+
+        response == what we get or got back from the LLM (text or json)
+
+        The cache is response, not results - if we read from the cache we re-parse
+        the response if required (for json prompts)
+
+        """
+        response = None
+
+        system_prompt = [{"role": "system", "content": self.start_chat().content}]
+        
+        user_prompt = [{"role": "user", "content": self.make_message(prompt).content}]
+
+        #messages = system_prompt + user_prompt
+        
+        if prompt.return_type == "json":
+            response_format = {"type": "json_object"}
+        else:     
+            response_format = {"type": "text"}
+
+        if self.model not in REASONING_MODELS:
+
+            body = {"model": self.model, 
+                "messages": system_prompt + user_prompt,  
+                "response_format": response_format, 
+                "temperature": self.temperature, 
+            }
+            
+        else:
+            #For reasoning models, use 'developer' instead of 'system' message and add 'reasoning_effort' parameter, see https://platform.openai.com/docs/guides/reasoning
+            #For reasoning models, 'temperature' parameter not supported as of 20250413
+            
+            developer_prompt = [{"role": "developer", "content": self.start_chat().content}]
+
+            body = {"model": self.model, 
+                "messages": developer_prompt + user_prompt,  
+                "response_format": response_format, 
+                'reasoning_effort': self.reasoning_effort
+            }
+            
+        batch_input_dict = {}
+        
+        try:
+            #Uncomment below if want to enable testing
+            #if self.test:
+                #if self.cache and not no_cache:
+                    #response = self.cache.read(case_id, prompt.name)
+                #if response is not None:
+                    #self.log(f"[{case_id}] {prompt.name} - cached result")
+                #else:
+                    #self.log(f"[{case_id}] {prompt.name} - mock result")
+                    #response = prompt.mock_response()
+            #else:
+            self.log(f"[{case_id}] {prompt.name} - producing batch input for LLM")
+            batch_input_dict = {"custom_id": self.custom_id(case_id, prompt), 
+                                "method": "POST", 
+                                "url": "/v1/chat/completions", 
+                                "body": body
+            }
+                    
+        except Exception as e:
+            return prompt.wrap_error(str(e))
+        return batch_input_dict
+
+    def batch_send(
+        self,
+        casefile: Path,
+        status_report: bool = False, 
+        #test: bool = False, #Uncomment if want to enable testing
+        prompts: list[str] = None,
+        no_cache: bool = False,
+    )-> dict:
+        """Submit a batch request for a single case, , unless there's already an earlier batch request or no_cache is True.
+        
+        If a batch request is submitted, then keep the batch object/record in the batch records spreadsheet, and return the object/record as a dict.
+        """
+        case_id = casefile.stem
+        self.load_judgment(casefile)
+        batch_record_dict = {}
+
+        #Uncomment below if want to enable testing
+        #self.test = test
+        #if not self.test:
+
+        #Decide whether to send batch depending on caching status
+        to_send = True
+
+        if not no_cache:
+            #Look for any earlier batch request
+            status_output_id = self.batch_check(casefile, status_report)            
+            if status_output_id['status'] != None:
+                to_send = False
+                self.log(f"[{case_id}] - found record for an earlier batch request, delete the record or set 'no_cache=True' to send a new batch request")
+        
+        if to_send == True:
+            
+            self.log(f"[{case_id}] - submitting batch input for all prompts for LLM")
+            
+            #Initialise openai
+            openai.api_key = self.api_key
+            
+            #Create a list of prompts
+            batch_input_list = []
+            for prompt in self.next_prompt():
+                if not prompts or prompt.name in prompts:
+                    batch_input_line = self.batch_input_line(case_id, prompt)
+                    batch_input_list.append(batch_input_line)
+                    
+            #Convert the list of prompts to JSONL
+            df_jsonl = pd.DataFrame(batch_input_list)
+            jsonl_for_batching = df_jsonl.to_json(orient='records', lines=True)
+    
+            #Submit batch request to LLM
+            batch_input_file = openai.files.create(
+                file = jsonl_for_batching.encode(encoding="utf-8"),
+                purpose="batch"
+            )
+            batch_input_file_id = batch_input_file.id
+            batch_record = openai.batches.create(
+                input_file_id=batch_input_file_id,
+                endpoint="/v1/chat/completions",
+                completion_window="24h", 
+    
+            )
+    
+            #Keep batch record
+            self.log(f"[{case_id}] - saving batch record to {self.batch_records_name}")
+            batch_record_dict = {"submission_time": datetime.now(), 
+               'status': batch_record.status, 
+               'batch_id': batch_record.id, 
+               'input_file_id': batch_record.input_file_id, 
+               'output_file_id': batch_record.output_file_id, 
+               'case_id': case_id,
+            }
+    
+            batch_record_df = pd.DataFrame([batch_record_dict])
+            batch_records = pd.read_excel(self.batch_records_name, dtype=str).fillna("")
+            batch_records_updated = pd.concat([batch_records, batch_record_df], ignore_index=True)
+            batch_records_updated.to_excel(self.batch_records_name, index=False)
+    
+            self.log(f"[{case_id}] pausing for {self.rate_limit}")
+            time.sleep(self.rate_limit)
+    
+            return batch_record_dict
+
+    def batch_check(
+        self,
+        casefile: Path,
+        status_report: bool = True, 
+        #test: bool = False, #Uncomment if want to enable testing
+        no_cache: bool = False,
+    )-> dict:
+        """Check the status of a batch request, update the batch records spreadsheet, return the status and output_id for that request as a dict.
+        Where a case and a prompt have produced multiple batch requests, the status and output_id of the most recent request will be produced.
+        """
+        case_id = casefile.stem
+        self.load_judgment(casefile)
+
+        #Uncomment below if want to enable testing
+        #self.test = test 
+        #if not self.test: 
+        
+        #Initialise openai
+        openai.api_key = self.api_key
+
+        #Retrive records of batch requests
+        batch_records = pd.read_excel(self.batch_records_name, dtype=str).fillna("")
+        
+        #Sort records by submission time
+        if 'submission_time' in batch_records.columns:
+            batch_records = batch_records.sort_values(by='submission_time')
+
+        #Get and keep batch record
+        try:
+            #Obtain the most recent record for the relevant case
+            case_index = batch_records.index[batch_records['case_id']==case_id].tolist()[-1]
+
+            #Retrive record
+            batch_id = batch_records.loc[case_index, 'batch_id']
+            submission_time = batch_records.loc[case_index, 'submission_time']
+    
+            #Get and updated batch record
+            batch_record = openai.batches.retrieve(batch_id)
+            status = batch_record.status
+            output_file_id = batch_record.output_file_id
+            
+            batch_records.loc[case_index, 'status']=status
+            batch_records.loc[case_index, 'output_file_id']=output_file_id
+    
+            #Print status if want to
+            if status_report == True:
+                self.log(f"[{case_id}] - submitted at {submission_time}, current status == {status}, output_file_id == {output_file_id}")
+    
+            #Uodate batch records
+            batch_records.to_excel(self.batch_records_name, index=False)
+
+            #Return
+            return {'status': status, 'output_file_id': output_file_id}
+
+        except:
+            self.log(f"[{case_id}] - submisson record not found")
+            return {'status': None, 'output_file_id': None}
+
+    def batch_retrieve_online(
+        self, 
+        casefile: Path,
+        prompt: CasePrompt, 
+        status_report: bool = False,
+    ) -> ResultsDict:
+        """Retrive one line of completed results of a batch request to LLM
+
+        Where a case and a prompt have produced multiple submitted batches, the most recent, completed results will be retrived.
+
+        response == what we get back from the LLM (text or json)
+        results == a list of values to be written into the spreadsheet
+
+        The cache is response, not results - if we read from the cache we re-parse
+        the response if required (for json prompts)
+
+        If a JSON array is returned, it is usually in the form of "{{prompt.name}:[the JSON array]}". 
+        Hence, if the return type for the prompt is json_multiple, the following extracts the JSON array from the dict.
+
+        """
+        case_id = casefile.stem
+        response = None
+        try:
+            status_output_id = self.batch_check(casefile, status_report)
+            if status_output_id['status'] == 'completed':
+                self.log(f"[{case_id}] {prompt.name} - retrieving output from LLM")
+                custom_id = self.custom_id(case_id, prompt)
+                batch_response = openai.files.content(status_output_id['output_file_id'])
+                
+                df_batch_response = pd.read_json(batch_response.text, lines=True)
+                response_index = df_batch_response.index[df_batch_response['custom_id']==custom_id].tolist()[0]
+
+                try:
+                    
+                    response = df_batch_response.loc[response_index, 'response']['body']['choices'][0]['message']['content']
+
+                except:
+
+                    response = next(o for o in df_batch_response.loc[gpt_index, 'response']["body"]["output"] if o.get("type") == "message")["content"][0]["text"]
+                
+        except Exception as e:
+            return prompt.wrap_error(str(e))
+        if self.cache and not self.test:
+            self.cache.write(casefile, prompt.name, response)
+        return prompt.parse_response(response)
+            
+    def batch_get(
+        self,
+        casefile: Path,
+        #test: bool = False, #Uncomment if want to enable testing
+        prompts: list[str] = None,
+        status_report: bool = False, 
+        no_cache: bool = False,
+    ) -> ResultsDict:
+        """Retrieve the classifier for a single case and returns the results as a
+        dict by prompt label."""
+        case_id = casefile.stem
+        self.load_judgment(casefile)
+        results = {"file": str(casefile), "mnc": self.judgment["mnc"]}
+
+        #Uncomment below if want to enable testing
+        #self.test = test
+        #if not self.test: 
+        
+        openai.api_key = self.api_key
+
+        for prompt in self.next_prompt():
+            if not prompts or prompt.name in prompts:                    
+                results[prompt.name] = self.batch_retrieve_online(casefile, prompt, status_report)
+                
+        return results
